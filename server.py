@@ -302,7 +302,7 @@ def join_game(data):
 # Create JWT token
 def create_jwt_token(user_id):
     # Read the secret key from file
-    with open(os.path.dirname(__file__) + '/../key.txt', 'r') as file:
+    with open(os.path.dirname(__file__) + '/key.txt', 'r') as file:
         key = file.read()
     # Create a JWT token
     token = jwt.encode({
@@ -315,7 +315,7 @@ def create_jwt_token(user_id):
 def decode_auth_token(auth_token):
     try:
         # Read the secret key from file
-        with open(os.path.dirname(__file__) + '/../key.txt', 'r') as file:
+        with open(os.path.dirname(__file__) + '/key.txt', 'r') as file:
             key = file.read()
         #payload = jwt.decode(auth_token, key)
         payload = jwt.decode(auth_token, key = key, verify=True, algorithms=['HS256'])
