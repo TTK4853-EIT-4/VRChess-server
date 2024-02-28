@@ -27,6 +27,14 @@ class GameRoom:
             return True
         else :
             return False
+        
+    def add_observer(self, observer):
+        # Check if the observer is already in the room
+        for obser in self.observers :
+            if obser.id == observer.id :
+                return False 
+        self.observers.append(observer)
+        return True
 
 
     def start_game(self):

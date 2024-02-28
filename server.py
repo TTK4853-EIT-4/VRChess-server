@@ -228,8 +228,9 @@ def create_room(data):
         # Check if the user is already in a room or has a room
         for room in game_rooms.values():
             if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
-                emit('room_created', {'error': f"Your are already in a room {room.room_id}"})
-                used_room = room
+                #emit('room_created', {'error': f"Your are already in a room {room.room_id}"})
+                #used_room = room
+                return {'error': f"Your are already in a room {room.room_id}"}
 
         room = GameRoom(user)
         game_rooms[room.room_id] = room
@@ -284,17 +285,50 @@ def join_game(data):
         if room.room_opponent is not None:
             return {'error': 'Room is already full'}
 
-        # Add the user as the opponent in the room
+        # Add the user as the opponent in the room and start the game
         room.add_opponent(user)
+        room.start_game()
 
         # Update the game_rooms dictionary with the modified room object
         game_rooms[room_id] = room
          
         print(game_rooms[room_id].room_opponent , ' room opponent value in the game rooms')
         # Emit event to notify other users in the room
-        socketio.emit('player_joined', {'room_id': room_id, 'username': user.username}  )
+        socketio.emit('player_joined', {'room_id': room_id, 'username': user.username , 'opponent_username' : room.room_opponent.username}  )
 
         return {'success': 'Joined room successfully'} 
+
+    else:
+        return {'error': 'Room does not exist'}
+    
+
+
+
+@socketio.on('observe_game')
+@login_required
+def observe_game(data):
+    room_id = data.get('room_id')
+    user = get_logged_in_user()
+
+    # Check if user is already in a room or has a room
+    for room in game_rooms.values():
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
+            return {'error': f"Your are already in a room {room.room_id}"}
+
+    # Check if the room exists
+    if room_id in game_rooms: 
+        room = game_rooms[room_id]
+        # Add the user as observer in the room 
+        if room.add_observer(user) :
+            # Update the game_rooms dictionary with the modified room object
+            game_rooms[room_id] = room        
+            # Emit event to notify other users in the room
+            socketio.emit('observer_joined', {'room_id': room_id, 'username': user.username }  )
+            print('success Joined room successfully')
+            return {'success': f'Joined room successfully'}
+        else :
+            print('error You are already observing this room')
+            return {'error': f'You are already observing this room'}
 
     else:
         return {'error': 'Room does not exist'}
@@ -337,5 +371,15 @@ def get_logged_in_user():
     return None
 
 
+import argparse
+
+# Add argument parser
+parser = argparse.ArgumentParser(description='Run the Flask application.')
+parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+args = parser.parse_args()
+
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)
+    if args.debug:
+        socketio.run(app, host="0.0.0.0", debug=True, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)

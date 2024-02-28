@@ -175,15 +175,15 @@ socket.on('room_created', function (data) {
 
     // Set the game status
     if (data.game_status == 1) {
-        cell3.innerHTML = '<i class="fa-solid fa-hourglass-start"></i> Waiting opponent';
+        cell4.innerHTML = '<i class="fa-solid fa-hourglass-start"></i> Waiting opponent';
     } else if (data.game_status == 2){
-        cell3.innerHTML = '<i class="fa-solid fa-play"></i> Playing';
+        cell4.innerHTML = '<i class="fa-solid fa-play"></i> Playing';
     } else {
-        cell3.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
+        cell4.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
     }
 
-    cell4.innerHTML = '<i class="fa-solid fa-user-group"></i> 1/2';
-    cell5.innerHTML = `<i class="fa-solid fa-eye"></i> ${data.observers.length}`;
+    cell5.innerHTML = '<i class="fa-solid fa-user-group"></i> 1/2';
+    cell6.innerHTML = `<i class="fa-solid fa-eye"></i> ${data.observers.length}`;
     //cell6.innerHTML = '<div class="dropdown"><button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-gear"></i></button><ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1"><li><a class="dropdown-item" href="#">Join the game</a></li></ul></div>';
 
     // Dropdown menu options
@@ -193,11 +193,11 @@ socket.on('room_created', function (data) {
         dropdown += `<li><a class="dropdown-item delete-room" href="#" data-roomid="${data.room_id}"><i class="fa-solid fa-trash"></i> Delete room</a></li>`;
     } else {
         dropdown += `<li><a class="dropdown-item join-game" href="#" data-roomid="${data.room_id}"><i class="fa-solid fa-play"></i> Join the game</a></li>`;
-        dropdown += `<li><a class="dropdown-item join-game" href="#" data-roomid="${data.room_id}"><i class="fa-solid fa-eye"></i> Observe the game</a></li>`;
+        dropdown += `<li><a class="dropdown-item observe-game" href="#" data-roomid="${data.room_id}"><i class="fa-solid fa-eye"></i> Observe the game</a></li>`;
     }
     dropdown += `</ul></div>`;
 
-    cell6.innerHTML = dropdown;
+    cell7.innerHTML = dropdown;
 });
 
 // Event listener for dynamically added 'join-game' buttons
@@ -215,6 +215,37 @@ $(document).on('click', 'a.join-game', function(event) {
             Toastify({
                 className: "tostify-danger",
                 text: response.error,
+                duration: 3000
+            }).showToast();
+        } else {
+            // Optionally, redirect the user to the game page or update the UI
+        }
+    });
+});
+
+
+// Event listener for dynamically added 'observe-room' buttons
+$(document).on('click', 'a.observe-game', function(event) {
+    event.preventDefault(); // Prevent default link behavior
+
+    var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
+    console.log("Room ID client side ::", roomID);
+
+    // Emit a socket event to delete the room
+    socket.emit('observe_game', { room_id: roomID }, function(response) {
+        // Handle response from the server
+        console.log(response);
+
+        if (response.status === 'success') {
+            Toastify({
+                className: "tostify-success",
+                text: response.message,
+                duration: 3000
+            }).showToast();
+        } else if (response.status === 'error') {
+            Toastify({
+                className: "tostify-danger",
+                text: response.message,
                 duration: 3000
             }).showToast();
         } else {
@@ -282,6 +313,7 @@ socket.on('player_joined', function(data) {
 });
 
 
+
 // Event listener for 'room_deleted' event
 socket.on('room_deleted', function(data) {
     console.log(data);
@@ -328,20 +360,23 @@ loadRooms = function(rooms) {
         var cell7 = row.insertCell(6);
         cell1.innerHTML = rooms[i].room_id;
         cell2.innerHTML = rooms[i].room_owner.username;
-        
+
+        if ( rooms[i].room_opponent !== null ) {
+            cell3.innerHTML = rooms[i].room_opponent.username;
+        }
         // Set the game status
         if (rooms[i].game_status == 1) {
-            cell3.innerHTML = '<i class="fa-solid fa-hourglass-start"></i> Waiting opponent';
+            cell4.innerHTML = '<i class="fa-solid fa-hourglass-start"></i> Waiting opponent';
         } else if (rooms[i].game_status == 2){
-            cell3.innerHTML = '<i class="fa-solid fa-play"></i> Playing';
+            cell4.innerHTML = '<i class="fa-solid fa-play"></i> Playing';
         } else {
-            cell3.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
+            cell4.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
         }
 
         // Count the number of players
         var playerCount = (rooms[i].room_opponent) ? '2/2' : '1/2';
-        cell4.innerHTML = '<i class="fa-solid fa-user-group"></i> '+ playerCount;
-        cell5.innerHTML = `<i class="fa-solid fa-eye"></i> ${rooms[i].observers.length}`;
+        cell5.innerHTML = '<i class="fa-solid fa-user-group"></i> '+ playerCount;
+        cell6.innerHTML = `<i class="fa-solid fa-eye"></i> ${rooms[i].observers.length}`;
         //cell6.innerHTML = '<div class="dropdown"><button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-gear"></i></button><ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1"><li><a class="dropdown-item" href="#">Join the game</a></li></ul></div>';
 
         // Dropdown menu options
@@ -351,11 +386,11 @@ loadRooms = function(rooms) {
             dropdown += `<li><a class="dropdown-item delete-room" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-trash"></i> Delete room</a></li>`;
         } else {
             dropdown += `<li><a class="dropdown-item join-game" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-play"></i> Join the game</a></li>`;
-            dropdown += `<li><a class="dropdown-item join-game" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-eye"></i> Observe the game</a></li>`;
+            dropdown += `<li><a class="dropdown-item observe-game" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-eye"></i> Observe the game</a></li>`;
         }
         dropdown += `</ul></div>`;
 
-        cell6.innerHTML = dropdown;
+        cell7.innerHTML = dropdown;
     }
 }
 
