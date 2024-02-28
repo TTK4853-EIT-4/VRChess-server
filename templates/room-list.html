@@ -312,7 +312,25 @@ socket.on('player_joined', function(data) {
     }
 });
 
+// Event listener for 'player_joined' event
+socket.on('observer_joined', function(data) {
+    console.log(data);
+    var roomID = data.room_id;
+    var observers = data.observers; 
+    // Find the row corresponding to the joined room in the table
+    var row = $('#game_rooms tr').filter(function() {
+        return $(this).find('td:first').text() === roomID;
+    });
 
+    if (row.length > 0) {
+        var cellObservers = row.find('td:nth-child(6)');
+        cellObservers.html(`<i class="fa-solid fa-eye"></i> ${observers.length}`);
+        
+        console.log('Observer joined room ' + roomID);
+    } else {
+        console.log('Room not found: ' + roomID);
+    }
+});
 
 // Event listener for 'room_deleted' event
 socket.on('room_deleted', function(data) {

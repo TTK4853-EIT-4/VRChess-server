@@ -227,7 +227,8 @@ def create_room(data):
     if user:
         # Check if the user is already in a room or has a room
         for room in game_rooms.values():
-            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
+            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
                 #emit('room_created', {'error': f"Your are already in a room {room.room_id}"})
                 #used_room = room
                 return {'error': f"Your are already in a room {room.room_id}"}
@@ -274,7 +275,8 @@ def join_game(data):
 
     # Check if user is already in a room or has a room
     for room in game_rooms.values():
-        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
             return {'error': f"Your are already in a room {room.room_id}"}
 
     # Check if the room exists
@@ -312,7 +314,8 @@ def observe_game(data):
 
     # Check if user is already in a room or has a room
     for room in game_rooms.values():
-        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
             return {'error': f"Your are already in a room {room.room_id}"}
 
     # Check if the room exists
@@ -321,13 +324,12 @@ def observe_game(data):
         # Add the user as observer in the room 
         if room.add_observer(user) :
             # Update the game_rooms dictionary with the modified room object
-            game_rooms[room_id] = room        
+            game_rooms[room_id] = room      
             # Emit event to notify other users in the room
-            socketio.emit('observer_joined', {'room_id': room_id, 'username': user.username }  )
-            print('success Joined room successfully')
+            observers_data = [observer.serialize() for observer in game_rooms[room_id].observers]
+            socketio.emit('observer_joined', {'room_id': room_id, 'observers': observers_data } )
             return {'success': f'Joined room successfully'}
         else :
-            print('error You are already observing this room')
             return {'error': f'You are already observing this room'}
 
     else:
