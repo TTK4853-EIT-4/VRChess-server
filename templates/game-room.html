@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask SocketIO Example</title>
+
+    <link rel="stylesheet"
+      href="https://unpkg.com/@chrisoakman/chessboard2@0.5.0/dist/chessboard2.min.css"
+      integrity="sha384-47VeTDpmy4yT21gKPXQcLQYQZwlmz27gEH5NTrOmTk3G/SGvMyltclOW/Q8uE+sL"
+      crossorigin="anonymous">
+</head>
+<body>
+    <h1>WebSocket Example</h1>
+
+    <div id="username_set">
+        <input type="text" id="username" placeholder="Enter your username">
+        <button id="set_username">Set username</button>
+    </div>
+
+    <div id="users">
+        <h2>Users</h2>
+        <ul id="user-list"></ul>
+    </div>
+
+    <div id="myBoard" style="width: 400px"></div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboard2@0.5.0/dist/chessboard2.min.js"
+        integrity="sha384-/KwQCjA1GWovZNV3QDVtvSMDzO4reGgarF/RqHipr7hIUElH3r5zNl9WEPPOBRIF"
+        crossorigin="anonymous"></script>
+    <script>
+
+        
+        var board = Chessboard2('myBoard', 'start');
+
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('message', function (data) {
+            console.log(data.data);
+        });
+
+        // On piece move
+        socket.on('move', function (data) {
+            console.log(data);
+            board.move(data.move.from + '-' + data.move.to);
+        });
+
+        // On set_new_fen event
+        socket.on('set_new_fen', function (data) {
+            console.log(data);
+            board.position(data.fen);
+        });
+
+        var set_new_fen = function () {
+            board.position("r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R");
+        };
+
+        socket.on('user_list', function (data) {
+            var userList = document.getElementById('user-list');
+            userList.innerHTML = '';
+            data.users.forEach(function (user) {
+                var li = document.createElement('li');
+                li.appendChild(document.createTextNode(user));
+                userList.appendChild(li);
+            });
+        });
+
+        socket.on('user_disconnected', function (data) {
+            console.log('User disconnected:', data.username);
+        });
+
+        socket.on('move_figure', function (data) {
+            console.log(data);
+        });
+
+        $('#set_username').click(function () {
+            var username = $('#username').val();
+            socket.emit('set_username', {username: username});
+            socket.on('set_username_return', function(message) {
+                console.log('id', message)
+            });
+        });
+    </script>
+</body>
+</html>

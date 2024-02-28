@@ -1,0 +1,67 @@
+{% extends 'blocks/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="mx-auto text-center wow fadeIn" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h1 class="mb-4">Sign Up</h1>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="wow fadeIn" data-wow-delay="0.3s">
+                    <form method="POST" action="/signup">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" name="firstname" id="firstname" placeholder="First Name">
+                                    <label for="firstname">First Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" name="lastname" id="lastname" placeholder="Last Name">
+                                    <label for="lastname">Last Name</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" name="username" id="username" placeholder="Username">
+                                    <label for="username">Username</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="password" class="form-control" name="password" id="password" placeholder="Password">
+                                    <label for="password">Password</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="password" class="form-control" name="repeatpassword" id="repeatpassword" placeholder="Repeat Password">
+                                    <label for="repeatpassword">Repeat Password</label>
+                                </div>
+                            </div>
+                            {% if error_message %}
+                            <div class="col-12">
+                                <div class="alert alert-danger" role="alert">
+                                    {{ error_message }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="col-12">
+                                <button class="btn btn-primary w-100 py-3" type="submit">Sign Up</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block footerjs %}
+<script>
+
+</script>
+{% endblock %}
