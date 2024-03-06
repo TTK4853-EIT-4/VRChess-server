@@ -19,6 +19,7 @@ class GameRoom:
         self.game_status = GameStatus.WAITING
         self.game_winner = None
         self.game_loser = None
+        self.read_only = False
 
     def add_opponent(self, opponent):
         # Check if there is already an opponent in the room
@@ -71,6 +72,9 @@ class GameRoom:
 
     def get_game(self):
         return self.game
+    
+    def is_read_only(self):
+        return self.read_only
     
     def serialize(self):
         return json.dumps(self, cls=GameRoomJSONEncoder)
