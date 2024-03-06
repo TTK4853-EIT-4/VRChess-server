@@ -284,12 +284,12 @@ $(document).on('click', 'a.delete-room', function(event) {
     });
 });
 
-// Event listener for 'player_joined' event
-socket.on('player_joined', function(data) {
+// Event listener for 'room_update' event
+socket.on('room_update', function(data) {
     console.log(data);
     var roomID = data.room_id;
-    var opponentUsername = data.opponent_username; 
-    // Find the row corresponding to the joined room in the table
+
+    // Find the row corresponding to the updated room in the table
     var row = $('#game_rooms tr').filter(function() {
         return $(this).find('td:first').text() === roomID;
     });
@@ -298,35 +298,20 @@ socket.on('player_joined', function(data) {
         var cellStatus = row.find('td:nth-child(4)');
         var cellParticipants = row.find('td:nth-child(5)');
         var cellOpponent = row.find('td:nth-child(3)');
-
-        cellOpponent.html(opponentUsername);
-        // Change the status to "Playing"
-        cellStatus.html('<i class="fa-solid fa-play"></i> Playing');
-
-        // Update the participant count to "2/2"
-        cellParticipants.html('<i class="fa-solid fa-user-group"></i> 2/2');
-
-        console.log('User joined room ' + roomID);
-    } else {
-        console.log('Room not found: ' + roomID);
-    }
-});
-
-// Event listener for 'player_joined' event
-socket.on('observer_joined', function(data) {
-    console.log(data);
-    var roomID = data.room_id;
-    var observers = data.observers; 
-    // Find the row corresponding to the joined room in the table
-    var row = $('#game_rooms tr').filter(function() {
-        return $(this).find('td:first').text() === roomID;
-    });
-
-    if (row.length > 0) {
         var cellObservers = row.find('td:nth-child(6)');
-        cellObservers.html(`<i class="fa-solid fa-eye"></i> ${observers.length}`);
-        
-        console.log('Observer joined room ' + roomID);
+
+        // Search opponent username if exists
+        if (data.opponent_username) {
+            cellOpponent.html(data.opponent_username);
+            cellStatus.html('<i class="fa-solid fa-play"></i> Playing');
+            cellParticipants.html('<i class="fa-solid fa-user-group"></i> 2/2');
+        }
+        // Search how many observers
+        if (data.observers) {
+            cellObservers.html(`<i class="fa-solid fa-eye"></i> ${data.observers.length}`);
+        }
+
+        console.log('Room updated: ' + roomID);
     } else {
         console.log('Room not found: ' + roomID);
     }

@@ -130,6 +130,16 @@ def create_room():
     # return the room view
     return render_template('room.html', title = "VRChess - Room", room = room)
 
+@app.route('/room/<uuid:room_id>')
+def room(room_id):
+    user = get_logged_in_user()
+    if not user:
+        return redirect(url_for('login'))
+    # Fetch room details based on room_id
+    room = game_rooms.get(str(room_id))
+    return render_template('room.html', title="VRChess - Room", user=user , room = room)
+
+
 
 # Filter for checking if the user is logged in
 def login_required(f):
@@ -296,7 +306,7 @@ def join_game(data):
          
         print(game_rooms[room_id].room_opponent , ' room opponent value in the game rooms')
         # Emit event to notify other users in the room
-        socketio.emit('player_joined', {'room_id': room_id, 'username': user.username , 'opponent_username' : room.room_opponent.username}  )
+        socketio.emit('room_update', {'room_id': room_id, 'username': user.username , 'opponent_username' : room.room_opponent.username}  )
 
         return {'success': 'Joined room successfully'} 
 
@@ -327,7 +337,7 @@ def observe_game(data):
             game_rooms[room_id] = room      
             # Emit event to notify other users in the room
             observers_data = [observer.serialize() for observer in game_rooms[room_id].observers]
-            socketio.emit('observer_joined', {'room_id': room_id, 'observers': observers_data } )
+            socketio.emit('room_update', {'room_id': room_id, 'observers': observers_data } )
             return {'success': f'Joined room successfully'}
         else :
             return {'error': f'You are already observing this room'}
