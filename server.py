@@ -14,6 +14,8 @@ import database.database as database
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'f9bf78b9a18ce6d46a0cd2b0b86df9da'
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['BOARD_SINGLE_PLAYER'] = 'single_player'
+app.config['BOARD_MULTI_PLAYER'] = 'multi_player'
 socketio = SocketIO(app, manage_session=False)
 
 # Stop http logging
@@ -170,11 +172,18 @@ def not_logged_in(f):
 @socketio.on('connect')
 def handle_connect():
     user = get_logged_in_user()
+    board = request.cookies.get('Board')
+    resp = make_response()
     if user:
         database.update_user_sid(user.username, request.sid)
         print(f"User connected: {user.username} {request.sid}")
+    elif board:
+        user = get_board_user()
+        resp.set_cookie('AuthToken', create_jwt_token(user.id))
+        database.update_user_sid(user.username, request.sid)
     else:
         print(f"Client connected: {request.sid}")
+    return resp
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -209,10 +218,18 @@ def handle_register(data):
 @socketio.on('login')
 @not_logged_in
 def handle_login(data):
+    board = data.get('Board')
+    if board:
+        print(f'Connecting board in {board} mode')
+        user = get_board_user()
+        print('Board connected:', user.username, user.id)
+        token = create_jwt_token(user.id)
+        emit('authenticated', {'token': token})
+        return {'status': 'success', 'user': user.serialize()}
+    
     username = data['username']
     password = data['password']
     password_hashed = hashlib.md5(password.encode()).hexdigest()
-
     user_data = database.get_user_by_username_and_password(username, password_hashed)
 
     if user_data:
@@ -233,18 +250,29 @@ def handle_login(data):
 
 
 @socketio.on('create_room')
-@login_required
 def create_room(data):
-    user = get_logged_in_user()
-
+    token = data.get('token')
+    user_id = decode_auth_token(token)
+    user = None
+    if user_id == '-1':
+        user = get_board_user()
+    elif user_id != 0:
+        user_data = database.get_user_by_id(user_id)
+        if user_data:
+            user = User(*user_data)
     if user:
+        print('Create room:', data)
         # Check if the user is already in a room or has a room
         for room in game_rooms.values():
             if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
                 return { 'status' : 'error' , 'message' : f"Your are already in a room {room.room_id}"}
 
+            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :                
+                return {'error': f"Your are already in a room {room.room_id}"}
         room = GameRoom(user)
+        room.read_only = data.get('read_only')
         game_rooms[room.room_id] = room
         emit('room_created', room.serialize(), broadcast=True)
         print(f"Room created: {room.room_id} by {user.username}")
@@ -316,6 +344,7 @@ def join_game(data):
 
 
 
+
 @socketio.on('observe_game')
 @login_required
 def observe_game(data):
@@ -353,6 +382,18 @@ def get_my_user():
     return user.serialize()
 
 
+@socketio.on('try_join_game')
+def try_join_game(data):
+    token = data['AuthToken']
+    for room in game_rooms.values():
+        if room.room_opponent is None:
+            print('Joining game:', room.room_id)
+            join_game({'room_id': room.room_id})
+            return
+    print('No available games. Creating a new one')
+    create_room(data={'read_only': False, 'token': token})
+
+
 # Create JWT token
 def create_jwt_token(user_id):
     # Read the secret key from file
@@ -384,11 +425,14 @@ def get_logged_in_user():
     token = request.cookies.get('AuthToken')
     if token:
         user_id = decode_auth_token(token)
+        if user_id == '-1':
+            return get_board_user()
         if user_id != 0:
             user_data = database.get_user_by_id(user_id)
             if user_data:
                 return User(*user_data)
     return None
+
 
 
 import argparse
@@ -397,6 +441,17 @@ import argparse
 parser = argparse.ArgumentParser(description='Run the Flask application.')
 parser.add_argument('--debug', action='store_true', help='Enable debug mode')
 args = parser.parse_args()
+
+
+def get_board_user():
+    return User(
+        id = '-1', 
+        sid = request.sid,
+        username = 'Board', 
+        password = None,
+        firstname = 'VRChess',
+        lastname = '.com')
+
 
 if __name__ == '__main__':
     if args.debug:
