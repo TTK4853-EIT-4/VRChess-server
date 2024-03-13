@@ -225,7 +225,7 @@ def handle_login(data):
         print('Board connected:', user.username, user.id)
         token = create_jwt_token(user.id)
         emit('authenticated', {'token': token})
-        return {'status': 'success', 'user': user.serialize()}
+        return {'status': 'success', 'data': user.serialize()}
     
     username = data['username']
     password = data['password']
@@ -244,7 +244,7 @@ def handle_login(data):
 
         emit('authenticated', {'token': token})
         # return status = true and the session to the browser
-        return {'status': 'success', 'user': user.serialize()}
+        return {'status': 'success', 'data': user.serialize()}
     else:
         return {'status': 'error', 'message': 'Invalid username or password'}
 
