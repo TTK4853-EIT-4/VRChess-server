@@ -122,32 +122,31 @@ $(document).ready(function() {
 $('#roomCreateButton').on('click', function() {
     socket.emit('create_room', {}, 
     (response) => {
-        console.log(response);
-        try {
-            response = jQuery.parseJSON(response);
+        room_data = jQuery.parseJSON(response.data);
 
-            // Close the modal
-            $('#createRoomModal').modal('hide');
-
-            // Show a success toast message
-            Toastify({
-                className: "tostify-success",
-                text: "You created a room with ID: " + response.room_id,
-                duration: 3000
-            }).showToast();
-        } catch (error) {}
-
-        if(response.error != null) {
+        if(response.status == 'error') {
             Toastify({
                 className: "tostify-danger",
-                text: response.error,
+                text: response.message,
                 duration: 3000
             }).showToast();
             return;
         }
-        else {
-            window.location.href = '/room/' + response.room_id;
-        }
+
+        // TODO: Probably we can remove the rest of the code and leave only the redirect to the room page
+
+        // Close the modal
+        $('#createRoomModal').modal('hide');
+
+        // Show a success toast message
+        Toastify({
+            className: "tostify-success",
+            text: response.message,
+            duration: 3000
+        }).showToast();
+
+        // Redirect to the room page
+        window.location.href = '/room/' + room_data.room_id;
     });
 });
 
@@ -157,7 +156,7 @@ socket.on('message', function(data) {
 
 socket.on('room_created', function (data) {
     data = JSON.parse(data);
-    console.log(data);
+
     var table = document.getElementById("game_rooms");
 
     if (data.room_owner.username == "{{ user.username }}") {
@@ -208,17 +207,22 @@ $(document).on('click', 'a.join-game', function(event) {
     event.preventDefault(); // Prevent default link behavior
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
-    // Emit a socket event to join the game
-    socket.emit('join_game', { room_id: roomID }, function(response) {
-        // Handle response from the server
-        console.log(response);
 
+    // Data to send to the server
+    var dataToSend = {
+        room_id: roomID
+    };
+
+    // Emit a socket event to join the game
+    socket.emit('join_game', dataToSend, function(response) {
+        // Handle response from the server
         if (response.status === 'success') {
             Toastify({
                 className: "tostify-success",
                 text: response.message,
                 duration: 3000
             }).showToast();
+
             // Redirect to the room page
             window.location.href = '/room/' + roomID;
         } else if (response.status === 'error') {
@@ -238,17 +242,22 @@ $(document).on('click', 'a.observe-game', function(event) {
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
 
-    // Emit a socket event to delete the room
-    socket.emit('observe_game', { room_id: roomID }, function(response) {
-        // Handle response from the server
-        console.log(response);
+    // Data to send to the server
+    var dataToSend = {
+        room_id: roomID
+    };
 
+    // Emit a socket event to delete the room
+    socket.emit('observe_game', dataToSend, function(response) {
+
+        // Handle response from the server
         if (response.status === 'success') {
             Toastify({
                 className: "tostify-success",
                 text: response.message,
                 duration: 3000
             }).showToast();
+
             // Redirect to the room page
             window.location.href = '/room/' + roomID;
 
@@ -259,6 +268,7 @@ $(document).on('click', 'a.observe-game', function(event) {
                 duration: 3000
             }).showToast();
         }
+
     });
 });
 
@@ -268,8 +278,13 @@ $(document).on('click', 'a.delete-room', function(event) {
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
 
+    // Data to send to the server
+    var dataToSend = {
+        room_id: roomID
+    };
+
     // Emit a socket event to delete the room
-    socket.emit('delete_room', { room_id: roomID }, function(response) {
+    socket.emit('delete_room', dataToSend, function(response) {
         // Handle response from the server
         console.log(response);
 
@@ -293,16 +308,13 @@ $(document).on('click', 'a.delete-room', function(event) {
     });
 });
 
-// Event listener for 'room_update' event
-socket.on('room_update', function(data) {
-    console.log(data);
-    var room = JSON.parse(data);;
-    var roomID = room.room_id;
-    console.log(roomID);
+// Event listener for 'room_updated' event
+socket.on('room_updated', function(data) {
+    var room = JSON.parse(data);
 
     // Find the row corresponding to the updated room in the table
     var row = $('#game_rooms tr').filter(function() {
-        return $(this).find('td:first').text() === roomID;
+        return $(this).find('td:first').text() === room.room_id;
     });
 
     if (row.length > 0) {
@@ -320,29 +332,26 @@ socket.on('room_update', function(data) {
            cellObservers.html(`<i class="fa-solid fa-eye"></i> ${room.observers.length}`);
         
 
-        console.log('Room updated: ' + roomID);
+        console.log('Room updated: ' + room.room_id);
     } else {
-        console.log('Room not found: ' + roomID);
+        console.error(`Room ${room.room_id} not found in the UI table.`);
     }
 });
 
 // Event listener for 'room_deleted' event
 socket.on('room_deleted', function(data) {
-    console.log(data);
-    var roomID = data.room_id;
     // Find the row corresponding to the deleted room in the table
     var row = $('#game_rooms tr').filter(function() {
-        return $(this).find('td:first').text() === roomID;
+        return $(this).find('td:first').text() === data.room_id;
     });
 
     if (row.length > 0) {
         row.remove();
-        console.log('Room deleted: ' + roomID);
+        console.log('Room deleted: ' + data.room_id);
     } else {
-        console.log('Room not found: ' + roomID);
+        console.log('Room not found: ' + data.room_id);
     }
 });
-
 
 
 loadRooms = function(rooms) {
