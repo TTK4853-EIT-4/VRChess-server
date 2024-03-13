@@ -139,7 +139,10 @@ def room(room_id):
         return redirect(url_for('login'))
     # Fetch room details based on room_id
     room = game_rooms.get(str(room_id))
-    return render_template('room.html', title="VRChess - Room", user=user , room = room)
+    if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
+                return render_template('room.html', title="VRChess - Room", user=user , room = room)
+    return { 'status' : 'error' , 'message' : f"Your are not in this room {room.room_id}"}
 
 
 
@@ -261,6 +264,9 @@ def create_room(data):
         print('Create room:', data)
         # Check if the user is already in a room or has a room
         for room in game_rooms.values():
+            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
+                return { 'status' : 'error' , 'message' : f"Your are already in a room {room.room_id}"}
 
             if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :                
@@ -310,7 +316,7 @@ def join_game(data):
     for room in game_rooms.values():
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
-            return {'error': f"Your are already in a room {room.room_id}"}
+            return { 'status' : 'error' , 'message' : f"Your are already in a room {room.room_id}"}
 
     # Check if the room exists
     if room_id in game_rooms: 
@@ -318,7 +324,7 @@ def join_game(data):
         
         # Check if the room is already full
         if room.room_opponent is not None:
-            return {'error': 'Room is already full'}
+            return { 'status' :'error', 'message' : 'Room is already full'}
 
         # Add the user as the opponent in the room and start the game
         room.add_opponent(user)
@@ -329,13 +335,11 @@ def join_game(data):
          
         print(game_rooms[room_id].room_opponent , ' room opponent value in the game rooms')
         # Emit event to notify other users in the room
-
-        socketio.emit('room_update', {'room_id': room_id, 'username': user.username , 'opponent_username' : room.room_opponent.username}  )
-
-        return {'success': 'Joined room successfully'} 
+        socketio.emit('room_update',  room.serialize() )
+        return {'status' : 'success', 'message' : 'Joined room successfully'} 
 
     else:
-        return {'error': 'Room does not exist'}
+        return {'status' : 'error' , 'message' : 'Room does not exist'}
     
 
 
@@ -351,7 +355,7 @@ def observe_game(data):
     for room in game_rooms.values():
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
-            return {'error': f"Your are already in a room {room.room_id}"}
+            return { 'status' : 'error' , 'message' : f"Your are already in a room {room.room_id}"}
 
     # Check if the room exists
     if room_id in game_rooms: 
@@ -361,14 +365,22 @@ def observe_game(data):
             # Update the game_rooms dictionary with the modified room object
             game_rooms[room_id] = room      
             # Emit event to notify other users in the room
-            observers_data = [observer.serialize() for observer in game_rooms[room_id].observers]
-            socketio.emit('room_update', {'room_id': room_id, 'observers': observers_data } )
-            return {'success': f'Joined room successfully'}
+            print('room :' +  room.serialize() )
+            socketio.emit('room_update', room.serialize()  )
+            return { 'status' :'success' , 'message' : f'Joined room successfully'}
         else :
-            return {'error': f'You are already observing this room'}
+            return { 'status' :'error', 'message' : f'You are already observing this room'}
 
     else:
-        return {'error': 'Room does not exist'}
+        return {'status' : 'error' , 'message' : 'Room does not exist'}
+    
+# get the connected user
+@socketio.on('get_my_user')
+@login_required
+def get_my_user():
+    user = get_logged_in_user()
+    return user.serialize()
+
 
 @socketio.on('try_join_game')
 def try_join_game(data):

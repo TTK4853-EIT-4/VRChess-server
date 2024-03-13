@@ -145,6 +145,9 @@ $('#roomCreateButton').on('click', function() {
             }).showToast();
             return;
         }
+        else {
+            window.location.href = '/room/' + response.room_id;
+        }
     });
 });
 
@@ -205,20 +208,25 @@ $(document).on('click', 'a.join-game', function(event) {
     event.preventDefault(); // Prevent default link behavior
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
-    console.log("Room ID client side ::", roomID); 
     // Emit a socket event to join the game
     socket.emit('join_game', { room_id: roomID }, function(response) {
         // Handle response from the server
         console.log(response);
 
-        if (response.error) {
+        if (response.status === 'success') {
             Toastify({
-                className: "tostify-danger",
-                text: response.error,
+                className: "tostify-success",
+                text: response.message,
                 duration: 3000
             }).showToast();
-        } else {
-            // Optionally, redirect the user to the game page or update the UI
+            // Redirect to the room page
+            window.location.href = '/room/' + roomID;
+        } else if (response.status === 'error') {
+            Toastify({
+                className: "tostify-danger",
+                text: response.message,
+                duration: 3000
+            }).showToast();
         }
     });
 });
@@ -229,7 +237,6 @@ $(document).on('click', 'a.observe-game', function(event) {
     event.preventDefault(); // Prevent default link behavior
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
-    console.log("Room ID client side ::", roomID);
 
     // Emit a socket event to delete the room
     socket.emit('observe_game', { room_id: roomID }, function(response) {
@@ -242,14 +249,15 @@ $(document).on('click', 'a.observe-game', function(event) {
                 text: response.message,
                 duration: 3000
             }).showToast();
+            // Redirect to the room page
+            window.location.href = '/room/' + roomID;
+
         } else if (response.status === 'error') {
             Toastify({
                 className: "tostify-danger",
                 text: response.message,
                 duration: 3000
             }).showToast();
-        } else {
-            // Optionally, redirect the user to the game page or update the UI
         }
     });
 });
@@ -259,7 +267,6 @@ $(document).on('click', 'a.delete-room', function(event) {
     event.preventDefault(); // Prevent default link behavior
 
     var roomID = $(this).data('roomid'); // Get the room ID from the button's data attribute
-    console.log("Room ID client side ::", roomID);
 
     // Emit a socket event to delete the room
     socket.emit('delete_room', { room_id: roomID }, function(response) {
@@ -272,6 +279,7 @@ $(document).on('click', 'a.delete-room', function(event) {
                 text: response.message,
                 duration: 3000
             }).showToast();
+
         } else if (response.status === 'error') {
             Toastify({
                 className: "tostify-danger",
@@ -280,6 +288,7 @@ $(document).on('click', 'a.delete-room', function(event) {
             }).showToast();
         } else {
             // Optionally, redirect the user to the game page or update the UI
+            
         }
     });
 });
@@ -287,7 +296,9 @@ $(document).on('click', 'a.delete-room', function(event) {
 // Event listener for 'room_update' event
 socket.on('room_update', function(data) {
     console.log(data);
-    var roomID = data.room_id;
+    var room = JSON.parse(data);;
+    var roomID = room.room_id;
+    console.log(roomID);
 
     // Find the row corresponding to the updated room in the table
     var row = $('#game_rooms tr').filter(function() {
@@ -301,15 +312,13 @@ socket.on('room_update', function(data) {
         var cellObservers = row.find('td:nth-child(6)');
 
         // Search opponent username if exists
-        if (data.opponent_username) {
-            cellOpponent.html(data.opponent_username);
+        if (room.room_opponent) {
+            cellOpponent.html(room.room_opponent.username);
             cellStatus.html('<i class="fa-solid fa-play"></i> Playing');
             cellParticipants.html('<i class="fa-solid fa-user-group"></i> 2/2');
         }
-        // Search how many observers
-        if (data.observers) {
-            cellObservers.html(`<i class="fa-solid fa-eye"></i> ${data.observers.length}`);
-        }
+           cellObservers.html(`<i class="fa-solid fa-eye"></i> ${room.observers.length}`);
+        
 
         console.log('Room updated: ' + roomID);
     } else {
