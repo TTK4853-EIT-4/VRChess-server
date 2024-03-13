@@ -160,6 +160,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 # Filter for not logged in users
 def not_logged_in(f):
     @wraps(f)
@@ -170,21 +171,16 @@ def not_logged_in(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @socketio.on('connect')
 def handle_connect():
     user = get_logged_in_user()
-    board = request.cookies.get('Board')
-    resp = make_response()
     if user:
         database.update_user_sid(user.username, request.sid)
-        print(f"User connected: {user.username} {request.sid}")
-    elif board:
-        user = get_board_user()
-        resp.set_cookie('AuthToken', create_jwt_token(user.id))
-        database.update_user_sid(user.username, request.sid)
+        print(f"Client connected: {request.sid}, Authenticated: {user.username}")
     else:
         print(f"Client connected: {request.sid}")
-    return resp
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
