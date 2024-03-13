@@ -119,10 +119,20 @@ $(document).ready(function() {
     });
 });
 
+// Enum class for player mode
+var PlayerMode = {
+    STANDARD: 1,
+    BOARD_TWO_PLAYER: 2
+};
+
 $('#roomCreateButton').on('click', function() {
-    socket.emit('create_room', {}, 
+    var options = {
+        player_mode: PlayerMode.STANDARD, // Standard mode with 2 players on 2 different clients
+        opponent: null
+    };
+
+    socket.emit('create_room', options, 
     (response) => {
-        room_data = jQuery.parseJSON(response.data);
 
         if(response.status == 'error') {
             Toastify({
@@ -132,6 +142,8 @@ $('#roomCreateButton').on('click', function() {
             }).showToast();
             return;
         }
+
+        room_data = jQuery.parseJSON(response.data);
 
         // TODO: Probably we can remove the rest of the code and leave only the redirect to the room page
 
@@ -174,6 +186,7 @@ socket.on('room_created', function (data) {
     var cell7 = row.insertCell(6);
     cell1.innerHTML = data.room_id;
     cell2.innerHTML = data.room_owner.username;
+    cell3.innerHTML = (data.room_opponent) ? data.room_opponent.username : '';
 
     // Set the game status
     if (data.game_status == 1) {
@@ -184,7 +197,8 @@ socket.on('room_created', function (data) {
         cell4.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
     }
 
-    cell5.innerHTML = '<i class="fa-solid fa-user-group"></i> 1/2';
+    var playerCount = (data.room_opponent) ? '2/2' : '1/2';
+    cell5.innerHTML = `<i class="fa-solid fa-user-group"></i> ${playerCount}`;
     cell6.innerHTML = `<i class="fa-solid fa-eye"></i> ${data.observers.length}`;
     //cell6.innerHTML = '<div class="dropdown"><button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-gear"></i></button><ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1"><li><a class="dropdown-item" href="#">Join the game</a></li></ul></div>';
 

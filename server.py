@@ -4,7 +4,7 @@ import os
 from flask_socketio import SocketIO, emit
 from flask import Flask, make_response, render_template, request, redirect, url_for
 from user import User
-from GameRoom import GameRoom, GameRoomJSONEncoder
+from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode
 import datetime
 import hashlib
 import json
@@ -15,8 +15,6 @@ import argparse
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'f9bf78b9a18ce6d46a0cd2b0b86df9da'
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['BOARD_SINGLE_PLAYER'] = 'single_player'
-app.config['BOARD_MULTI_PLAYER'] = 'multi_player'
 socketio = SocketIO(app, manage_session=False)
 
 # Stop http logging
@@ -241,19 +239,41 @@ def handle_login(data):
 @login_required
 def create_room(data):
     user = get_logged_in_user()
+    player_mode = data.get('player_mode')
 
     if not user:
         return {'status': 'error', 'message': 'User not authenticated'}
 
-    print('Create room:', data)
     # Check if the user is already in a room or has a room
     for room in game_rooms.values():
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
             return {'status': 'error', 'message': f"Your are already in a room {room.room_id}"}
-
+    
     # Creating a new room
     room = GameRoom(user)
+    room.set_player_mode(player_mode)
+
+    # if player mode is PlayerMode.BOARD_TWO_PLAYER, add the opponent to the room
+    if player_mode == PlayerMode.BOARD_TWO_PLAYER.value:
+        print('Create room:', data)
+        opponent_username = data.get('opponent')
+        opponent_user = database.get_user_by_username(opponent_username)
+        if opponent_user is None:
+            return {'status': 'error', 'message': f"User {opponent_username} not found"}
+        
+        opponent_user = User(*opponent_user)
+        
+        # If opponent is already in a room or has a room
+        for room in game_rooms.values():
+            if room.room_owner.username == room.room_opponent.username or (room.room_opponent != None and room.room_opponent.username == room.room_opponent.username) or \
+                any(observer.id == room.room_opponent.id for observer in room.observers) :
+                return {'status': 'error', 'message': f"The user {opponent_username} is already in a room"}
+            
+        # Add opponent to the room
+        room.add_opponent(opponent_user)
+        room.start_game()
+
     game_rooms[room.room_id] = room
     emit('room_created', room.serialize(), broadcast=True)
     print(f"Room created: {room.room_id} by {user.username}")
