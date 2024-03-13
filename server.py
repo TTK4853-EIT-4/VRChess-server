@@ -132,6 +132,16 @@ def create_room():
     # return the room view
     return render_template('room.html', title = "VRChess - Room", room = room)
 
+@app.route('/room/<uuid:room_id>')
+def room(room_id):
+    user = get_logged_in_user()
+    if not user:
+        return redirect(url_for('login'))
+    # Fetch room details based on room_id
+    room = game_rooms.get(str(room_id))
+    return render_template('room.html', title="VRChess - Room", user=user , room = room)
+
+
 
 # Filter for checking if the user is logged in
 def login_required(f):
@@ -251,10 +261,10 @@ def create_room(data):
         print('Create room:', data)
         # Check if the user is already in a room or has a room
         for room in game_rooms.values():
-            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
-                emit('room_created', {'error': f"Your are already in a room {room.room_id}"}, broadcast=False)
-                used_room = room
 
+            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :                
+                return {'error': f"Your are already in a room {room.room_id}"}
         room = GameRoom(user)
         room.read_only = data.get('read_only')
         game_rooms[room.room_id] = room
@@ -298,7 +308,8 @@ def join_game(data):
 
     # Check if user is already in a room or has a room
     for room in game_rooms.values():
-        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username):
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
             return {'error': f"Your are already in a room {room.room_id}"}
 
     # Check if the room exists
@@ -309,21 +320,56 @@ def join_game(data):
         if room.room_opponent is not None:
             return {'error': 'Room is already full'}
 
-        # Add the user as the opponent in the room
+        # Add the user as the opponent in the room and start the game
         room.add_opponent(user)
+        room.start_game()
 
         # Update the game_rooms dictionary with the modified room object
         game_rooms[room_id] = room
          
         print(game_rooms[room_id].room_opponent , ' room opponent value in the game rooms')
         # Emit event to notify other users in the room
-        socketio.emit('player_joined', {'room_id': room_id, 'username': user.username, 'userid': user.id}  )
+
+        socketio.emit('room_update', {'room_id': room_id, 'username': user.username , 'opponent_username' : room.room_opponent.username}  )
 
         return {'success': 'Joined room successfully'} 
 
     else:
         return {'error': 'Room does not exist'}
     
+
+
+
+
+@socketio.on('observe_game')
+@login_required
+def observe_game(data):
+    room_id = data.get('room_id')
+    user = get_logged_in_user()
+
+    # Check if user is already in a room or has a room
+    for room in game_rooms.values():
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
+            return {'error': f"Your are already in a room {room.room_id}"}
+
+    # Check if the room exists
+    if room_id in game_rooms: 
+        room = game_rooms[room_id]
+        # Add the user as observer in the room 
+        if room.add_observer(user) :
+            # Update the game_rooms dictionary with the modified room object
+            game_rooms[room_id] = room      
+            # Emit event to notify other users in the room
+            observers_data = [observer.serialize() for observer in game_rooms[room_id].observers]
+            socketio.emit('room_update', {'room_id': room_id, 'observers': observers_data } )
+            return {'success': f'Joined room successfully'}
+        else :
+            return {'error': f'You are already observing this room'}
+
+    else:
+        return {'error': 'Room does not exist'}
+
 @socketio.on('try_join_game')
 def try_join_game(data):
     token = data['AuthToken']
@@ -334,6 +380,7 @@ def try_join_game(data):
             return
     print('No available games. Creating a new one')
     create_room(data={'read_only': False, 'token': token})
+
 
 # Create JWT token
 def create_jwt_token(user_id):
@@ -376,6 +423,14 @@ def get_logged_in_user():
 
 
 
+import argparse
+
+# Add argument parser
+parser = argparse.ArgumentParser(description='Run the Flask application.')
+parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+args = parser.parse_args()
+
+
 def get_board_user():
     return User(
         id = '-1', 
@@ -385,5 +440,9 @@ def get_board_user():
         firstname = 'VRChess',
         lastname = '.com')
 
+
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)
+    if args.debug:
+        socketio.run(app, host="0.0.0.0", debug=True, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)
