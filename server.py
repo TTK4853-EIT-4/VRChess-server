@@ -245,10 +245,10 @@ def create_room(data):
         return {'status': 'error', 'message': 'User not authenticated'}
 
     # Check if the user is already in a room or has a room
-    for room in game_rooms.values():
-        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
-            any(observer.id == user.id for observer in room.observers) :
-            return {'status': 'error', 'message': f"Your are already in a room {room.room_id}"}
+    for room_loop in game_rooms.values():
+        if room_loop.room_owner.username == user.username or (room_loop.room_opponent != None and room_loop.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room_loop.observers) :
+            return {'status': 'error', 'message': f"Your are already in a room {room_loop.room_id}"}
     
     # Creating a new room
     room = GameRoom(user)
@@ -265,10 +265,10 @@ def create_room(data):
         opponent_user = User(*opponent_user)
         
         # If opponent is already in a room or has a room
-        for room in game_rooms.values():
-            if room.room_owner.username == room.room_opponent.username or (room.room_opponent != None and room.room_opponent.username == room.room_opponent.username) or \
-                any(observer.id == room.room_opponent.id for observer in room.observers) :
-                return {'status': 'error', 'message': f"The user {opponent_username} is already in a room"}
+        for room_loop in game_rooms.values():
+            if room_loop.room_owner.username == opponent_user.username or (room_loop.room_opponent != None and room_loop.room_opponent.username == opponent_user.username) or \
+                any(observer.id == opponent_user.id for observer in room_loop.observers) :
+                return {'status': 'error', 'message': f"User {opponent_user.username} is already in a room {room_loop.room_id}"}
             
         # Add opponent to the room
         room.add_opponent(opponent_user)
