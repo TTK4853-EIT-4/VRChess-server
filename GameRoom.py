@@ -9,6 +9,11 @@ class GameStatus(Enum):
     STARTED = 2
     ENDED = 3
 
+class PlayerMode(Enum):
+    STANDARD = 1 # Standard multiplayer game with two players on different devices/clients
+    BOARD_TWO_PLAYER = 2 # Two players on the same physical board
+    # For BOARD_TWO_PLAYERS the opponent will be set by username on the room creation
+
 class GameRoom:
     def __init__(self, room_owner):
         self.room_id = str(uuid.uuid1())
@@ -19,6 +24,7 @@ class GameRoom:
         self.game_status = GameStatus.WAITING
         self.game_winner = None
         self.game_loser = None
+        self.player_mode = PlayerMode.STANDARD
 
     def add_opponent(self, opponent):
         # Check if there is already an opponent in the room
@@ -80,6 +86,12 @@ class GameRoom:
     def get_game(self):
         return self.game
     
+    def get_player_mode(self):
+        return self.player_mode
+    
+    def set_player_mode(self, player_mode):
+        self.player_mode = player_mode
+    
     def serialize(self):
         return json.dumps(self, cls=GameRoomJSONEncoder)
     
@@ -94,7 +106,8 @@ class GameRoomJSONEncoder(JSONEncoder):
                 "game_status": obj.game_status.value,
                 "game_winner": obj.game_winner,
                 "game_loser": obj.game_loser,
-                "game": obj.game.fen() if obj.game else None
+                "game": obj.game.fen() if obj.game else None,
+                "player_mode": obj.player_mode
             }
         # Let the base class default method raise the TypeError
         return JSONEncoder.default(self, obj)
