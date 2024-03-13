@@ -268,15 +268,12 @@ def create_room(data):
             any(observer.id == user.id for observer in room.observers) :
                 return { 'status' : 'error' , 'message' : f"Your are already in a room {room.room_id}"}
 
-            if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
-            any(observer.id == user.id for observer in room.observers) :                
-                return {'error': f"Your are already in a room {room.room_id}"}
         room = GameRoom(user)
         room.read_only = data.get('read_only')
         game_rooms[room.room_id] = room
         emit('room_created', room.serialize(), broadcast=True)
         print(f"Room created: {room.room_id} by {user.username}")
-        return room.serialize()
+        return  { 'status' : 'success' , 'message' : 'Room created successfully'  , 'data' :room.serialize()}
 
 @socketio.on('get_all_rooms')
 def get_all_rooms():
