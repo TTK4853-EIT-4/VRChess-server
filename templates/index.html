@@ -102,8 +102,13 @@
 {% endblock %}
 
 {% block footerjs %}
+
+<!-- Load chess js library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.1/chess.js"></script>
+
 <script>
 
+const game = new Chess()
 const board = Chessboard2('myBoard', {
     //draggable: true,
     moveSpeed: 'slow',
@@ -112,44 +117,18 @@ const board = Chessboard2('myBoard', {
     position: 'start'
 })
 
-const files = 'abcdefgh'.split('')
-const ranks = '12345678'.split('')
+window.setTimeout(makeRandomMove, 500)
 
-function setRandomPosition() {
-  const currentPosition = board.getPosition('map')
-  const newPosition = new Map()
+function makeRandomMove () {
+  if (game.game_over()) return
 
-  const randomSquares = shuffleArray(allSquares())
-  let idx = 0
-  currentPosition.forEach((piece, _square) => {
-    newPosition.set(randomSquares[idx], piece)
-    idx = idx + 1
-  })
+  const legalMoves = game.moves()
+  const randomIdx = Math.floor(Math.random() * legalMoves.length)
+  game.move(legalMoves[randomIdx])
+  board.position(game.fen())
 
-  board.setPosition(newPosition)
+  window.setTimeout(makeRandomMove, 500)
 }
 
-function allSquares () {
-  const squares = []
-  for (let i = 0; i < files.length; i++) {
-    for (let j = 0; j < ranks.length; j++) {
-      squares.push(files[i] + ranks[j])
-    }
-  }
-  return squares
-}
-
-function shuffleArray (array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const temp = array[i]
-    array[i] = array[j]
-    array[j] = temp
-  }
-  return array
-}
-
-// Set random position every 4 seconds
-setInterval(setRandomPosition, 4000);
 </script>
 {% endblock %}

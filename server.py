@@ -411,7 +411,7 @@ def subscribe_to_room(data):
 @login_required
 def piece_move(data):
     room_id = data.get('room_id')
-    move = data.get('move') # format: {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
+    move = data.get('move') # format: { "source": "c7", "target": "c5", "piece": "bP" }
     user = get_logged_in_user()
     room = game_rooms.get(room_id)
     if room:
@@ -419,18 +419,28 @@ def piece_move(data):
             
             import chess
             Nf3 = chess.Move.from_uci(move['source'] + move['target'])
+
+            # check if the move is valid
+            if Nf3 not in room.game.legal_moves:
+                return {'status': 'error', 'message': f"{Nf3} is not a legal move."}
+
             room.game.push(Nf3)
-            print(room.game.fen())
+            print("\n")
+            print(room.game)
 
             # update the game in list
             game_rooms[room_id] = room
 
-            emit('piece_moved', move, room=room_id, skip_sid=request.sid)
-            return {'status': 'success', 'message': f'Piece moved successfully'}
+            # return data: {move: move, fen: room.game.fen()}
+            return_data = {'move': move, 'fen': room.game.fen()}
+
+            emit('piece_moved', return_data, room=room_id, skip_sid=request.sid)
+            return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
         else:
-            return {'status': 'error', 'message': f"You are not in this room {room_id}"}
+            return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
     else:
         return {'status': 'error', 'message': f"Room {room_id} does not exist"}
+
 
 # get the connected user
 @socketio.on('get_my_user')
