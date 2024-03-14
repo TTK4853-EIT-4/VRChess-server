@@ -9,10 +9,10 @@
         <div class="row justify-content-center">
             <div class="col-lg-12">
                 <div class="mb-3 text-center">
-                    <h3>Room Owner: {{ room.room_owner.username }}</h3>
+                    <h3>Room Owner: <span id="room_owner">{{ room.room_owner.username }}</span></h3>
                 </div>
                 <div class="mb-3 text-center">
-                    <h3>Opponent: {{ room.room_opponent.username }}</h3>
+                    <h3>Opponent: <span id="room_opponent">{{ room.room_opponent.username }}</span></h3>
                 </div>
             </div>
         </div>
@@ -21,6 +21,20 @@
                 <div id="myBoard" style="width: 400px;"></div>
             </div>
         </div>
+        <!-- Room Observers List -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-lg-6">
+                <div class="mb-3 text-center">
+                    <h3>Observers - <span id="observer_count">0</span></h3>
+                </div>
+                <div class="mb-3 text-center">
+                    <ul id="observers_list">
+                        {% for observer in room.observers %}
+                        <li>{{ observer.username }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
     </div>
 </div>
 {% endblock %}
@@ -32,9 +46,95 @@ const board = Chessboard2('myBoard', {
     moveSpeed: 'slow',
     snapbackSpeed: 500,
     snapSpeed: 100,
-    position: 'start' // Set the position to the starting position
+    position: 'start', // Set the position to the starting position
+    onDrop
 });
 
+// Set the board pieces from FEN
+console.log('{{ room.game.fen() }}');
+board.position('{{ room.game.fen() }}');
+
 var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+socket.on('connect', function() {
+    var room_id = '{{ room.room_id }}';
+    console.log(room_id);
+
+    var options = {
+        room_id: room_id
+    };
+
+    // Emit subscribe_to_room event and process the response
+    socket.emit('subscribe_to_room', options, 
+    (response) => {
+
+        if (response.status == 'success') {
+            console.log('Subscribed to room');
+        } else {
+            console.log('Failed to subscribe to room');
+
+            // Show error message
+            Toastify({
+                className: "tostify-danger",
+                text: response.message,
+                duration: 3000
+            }).showToast();
+
+            // TODO: Redirect to home page maybe?
+        }
+    });
+});
+
+// socket on room_update event
+socket.on('room_updated', function(data) {
+    data = jQuery.parseJSON(data);
+    console.log('Room update event received');
+    console.log(data);
+
+    if (data.room_opponent) {
+        $('#room_opponent').text(data.room_opponent.username);
+    }
+
+    if (data.observers) {
+        $('#observer_count').text(data.observers.length);
+        $('#observers_list').empty();
+        data.observers.forEach(function(observer) {
+            $('#observers_list').append('<li>' + observer.username + '</li>');
+        });
+    }
+});
+
+// On piece move event emit move event to server
+function onDrop (data) {
+    // Cast data from [object Object] to JSON
+    data = jQuery.parseJSON(JSON.stringify(data));
+
+    console.log(data);
+
+    // Format = {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
+
+    // Emit move event to server
+    socket.emit('piece_move', {
+        room_id: '{{ room.room_id }}',
+        move: data
+    });
+}
+
+// socket on piece_moved event
+socket.on('piece_moved', function(data) {
+    console.log('Piece moved event received');
+    console.log(data);
+
+    // Move the piece on the board
+    board.move(data.source + '-' + data.target);
+});
+
+// function which emits test event
+function test() {
+    socket.emit('test', {
+        data: 'test'
+    });
+}
+
 </script>
 {% endblock %}

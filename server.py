@@ -1,7 +1,7 @@
 from ast import dump
 from functools import wraps
 import os
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room, close_room
 from flask import Flask, make_response, render_template, request, redirect, url_for
 from user import User
 from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode
@@ -275,6 +275,7 @@ def create_room(data):
         room.start_game()
 
     game_rooms[room.room_id] = room
+
     emit('room_created', room.serialize(), broadcast=True)
     print(f"Room created: {room.room_id} by {user.username}")
     return  {'status': 'success', 'message': 'Room created successfully', 'data': room.serialize()}
@@ -297,6 +298,9 @@ def delete_room(data):
         room = game_rooms[room_id]
         if room.room_owner.username == user.username:
             del game_rooms[room_id]
+
+            # Removes any users that are in the given room and then deletes the room from the server
+            close_room(room_id)
             emit('room_deleted', {'room_id': room_id}, broadcast = True)
             return {'status': 'success', 'message': f"Room {room_id} deleted successfully"}
         else:
@@ -308,6 +312,13 @@ def handle_test(data):
     # get logged in user
     user = get_logged_in_user()
     print('Test:', data, user)
+
+    # Subscribe the connected client to the socket room 'test-123'
+    room = 'test-123'
+    join_room(room, sid=request.sid)
+
+    # Emit to socket room 'test-123' only
+    emit('hello', {'message': 'Test message'}, room='test-123')
 
 
 @socketio.on('join_game')
@@ -339,6 +350,10 @@ def join_game(data):
          
         # Emit event to notify ALL users for the room update
         socketio.emit('room_updated',  room.serialize())
+
+        # Emit event to notify only the room participants for the updated room
+        socketio.emit('room_updated', room.serialize(), room=room_id)
+
         return {'status': 'success', 'message': 'Joined room successfully'} 
 
     else:
@@ -372,6 +387,50 @@ def observe_game(data):
     else:
         return {'status': 'error', 'message': 'Room does not exist'}
 
+
+# On subscribe to socket room event
+@socketio.on('subscribe_to_room')
+@login_required
+def subscribe_to_room(data):
+    room_id = data.get('room_id')
+    user = get_logged_in_user()
+    room = game_rooms.get(room_id)
+    if room:
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+            any(observer.id == user.id for observer in room.observers) :
+            join_room(room_id, sid=request.sid)
+            return {'status': 'success', 'message': f'Subscribed to room {room_id}'}
+        else:
+            return {'status': 'error', 'message': f"You are not in this room {room_id}"}
+    else:
+        return {'status': 'error', 'message': f"Room {room_id} does not exist"}
+
+
+# On piece_move event
+@socketio.on('piece_move')
+@login_required
+def piece_move(data):
+    room_id = data.get('room_id')
+    move = data.get('move') # format: {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
+    user = get_logged_in_user()
+    room = game_rooms.get(room_id)
+    if room:
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
+            
+            import chess
+            Nf3 = chess.Move.from_uci(move['source'] + move['target'])
+            room.game.push(Nf3)
+            print(room.game.fen())
+
+            # update the game in list
+            game_rooms[room_id] = room
+
+            emit('piece_moved', move, room=room_id, skip_sid=request.sid)
+            return {'status': 'success', 'message': f'Piece moved successfully'}
+        else:
+            return {'status': 'error', 'message': f"You are not in this room {room_id}"}
+    else:
+        return {'status': 'error', 'message': f"Room {room_id} does not exist"}
 
 # get the connected user
 @socketio.on('get_my_user')
