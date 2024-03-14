@@ -558,3 +558,13 @@ h6,
     background: #17A2B8;
     color: #FFFFFF;
 }
+.validation-error{
+    color: rgb(255, 55, 55);
+    font-size: 0.8em;
+    margin-top: 0.2em;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+.validation-error.show {
+    opacity: 1;
+}

@@ -54,7 +54,6 @@ def signup():
         return redirect(url_for('index'))
     return render_template('signup.html', title = "VRChess - Sign Up")
 
-# TODO: Add validation for the form data
 @app.route('/signup', methods=['POST'])
 def signup_post():
     username = request.form.get('username')
@@ -62,6 +61,21 @@ def signup_post():
     password_hashed = hashlib.md5(password.encode()).hexdigest()
     firstname = request.form.get('firstname')
     lastname = request.form.get('lastname')
+
+    # server side validation
+    errors = []
+
+    if not username:
+        errors.append("Username is required")
+    if not password:
+        errors.append("Password is required")
+    if not firstname:
+        errors.append("First name is required")
+    if not lastname:
+        errors.append("Last name is required")
+
+    if errors:
+        return render_template('signup.html', title="VRChess - Sign Up", error_messages=errors)
 
     existing_user = database.get_user_by_username(username)
 
@@ -72,12 +86,22 @@ def signup_post():
 
     return redirect(url_for('index'))
 
-# TODO: Add validation for the form data
 @app.route('/login', methods=['POST'])
 def login_post():
     username = request.form.get('username')
     password = request.form.get('password')
     password_hashed = hashlib.md5(password.encode()).hexdigest()
+
+    # server side validation
+    errors = []
+
+    if not username:
+        errors.append("Username is required")
+    if not password:
+        errors.append("Password is required")
+
+    if errors:
+        return render_template('login.html', title="VRChess - Login", error_messages=errors)
 
     user_data = database.get_user_by_username_and_password(username, password_hashed)
 
@@ -96,7 +120,8 @@ def login_post():
 
         return response
     else:
-        return render_template('login.html', title = "VRChess - Login", error_message="Invalid username or password")
+        errors.append("Invalid username or password")
+        return render_template('login.html', title = "VRChess - Login", error_messages=errors)
 
 @app.route('/logout')
 def logout():
@@ -189,7 +214,7 @@ def handle_disconnect():
 
 
 # On register event with ACK response from server
-# TODO: Add validation for username and password
+# TODO: Add validation for username and password (not sure how to test it, so just trusting that it works like http endpoint)
 @socketio.on('register')
 @not_logged_in
 def handle_register(data):
@@ -198,6 +223,21 @@ def handle_register(data):
     password_hashed = hashlib.md5(password.encode()).hexdigest()
     firstname = data['firstname']
     lastname = data['lastname']
+
+    # server side validation
+    errors = []
+
+    # Validate username
+    if not username:
+        errors.append('Username is required')
+
+    # Validate password
+    if not password:
+        errors.append('Password is required')
+
+    # Check if there are any errors
+    if errors:
+        return {'status': 'error', 'message': ', '.join(errors)}
 
     existing_user = database.get_user_by_username(username)
 
@@ -215,6 +255,23 @@ def handle_register(data):
 def handle_login(data):
     username = data['username']
     password = data['password']
+
+    # server side validation (not sure how to test it, so just trusting that it works like http endpoint)
+    errors = []
+
+    # Validate username
+    if not username:
+        errors.append('Username is required')
+
+    # Validate password
+    if not password:
+        errors.append('Password is required')
+
+    # Check if there are any errors
+    if errors:
+        return {'status': 'error', 'message': ', '.join(errors)}
+    
+
     password_hashed = hashlib.md5(password.encode()).hexdigest()
     user_data = database.get_user_by_username_and_password(username, password_hashed)
 
