@@ -44,6 +44,14 @@ The socketIO server listens for incoming connections on the port 5000. The serve
 
 The server emits the following events:
 
+| ID  | Name          | Description                                                                           | Send Data                                                                       | Send To                     |
+|-----|---------------|---------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|-----------------------------|
+| SE1 | room_created  | Notify clients for new room   creation                                                | Serialized Room Obj                                                             | Broadcast                   |
+| SE2 | room_deleted  | Notify clients for a room delete                                                      | {"room_id": room_id}                                                            | Broadcast                   |
+| SE3 | room_updated  | Notify all clients that a   specific room is updated (opponent/observer joined etc..) | Serialized Room Obj                                                             | Broadcast                   |
+| SE4 | room_updated_ | Notify room's clients that the   room is updated (opponent/observer joined etc..)     | Serialized Room Obj                                                             | Multicast to room's clients |
+| SE5 | piece_moved_  | Notify room's clients that a   piece is moved                                         | { "move": {   "source": "c7", "target": "c5",   "piece": "bP" }, "fen": "FEN" } | Multicast to room's clients |
+
 ### Client Side
 
 #### Event Emitting
