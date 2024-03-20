@@ -352,7 +352,7 @@ def join_game(data):
         socketio.emit('room_updated',  room.serialize())
 
         # Emit event to notify only the room participants for the updated room
-        socketio.emit('room_updated', room.serialize(), room=room_id)
+        socketio.emit('room_updated_', room.serialize(), room=room_id)
 
         return {'status': 'success', 'message': 'Joined room successfully'} 
 
@@ -381,6 +381,8 @@ def observe_game(data):
             game_rooms[room_id] = room
             # Emit event to notify ALL users for the room update (using for updating the room list in the client side)
             socketio.emit('room_updated', room.serialize())
+
+            socketio.emit('room_updated_', room.serialize(), room=room_id)
             return {'status': 'success', 'message': f'Joined room as observer successfully'}
         else :
             return {'status': 'error', 'message': f'You are already observing this room'}

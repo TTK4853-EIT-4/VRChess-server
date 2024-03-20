@@ -113,6 +113,10 @@
 
 {% block footerjs %}
 <script>
+    window.onpageshow = function(event) {
+    if (event.persisted) {
+        window.location.reload(); 
+    }}
     var socket = io.connect('http://' + document.domain + ':' + location.port);
 
     // On document load
@@ -449,7 +453,7 @@
             } else if (rooms[i].room_opponent && rooms[i].room_opponent.username == "{{ user.username }}") {
                 // Opponent is the current user, show rejoin option
                 dropdown += `<li><a class="dropdown-item rejoin-game" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-sync"></i> Rejoin the game</a></li>`;
-            } else if (rooms[i].observers.includes("{{ user.username }}")) {
+            } else if (rooms[i].observers.some(observer => observer.username === "{{ user.username }}"))  {
                 // Current user is an observer, show rejoin option
                 dropdown += `<li><a class="dropdown-item rejoin-game" href="#" data-roomid="${rooms[i].room_id}"><i class="fa-solid fa-sync"></i> Rejoin the game</a></li>`;
             } else {

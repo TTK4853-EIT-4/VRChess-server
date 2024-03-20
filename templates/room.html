@@ -101,7 +101,7 @@ socket.on('connect', function() {
 });
 
 // socket on room_update event
-socket.on('room_updated', function(data) {
+socket.on('room_updated_', function(data) {
     data = jQuery.parseJSON(data);
     console.log('Room update event received');
     console.log(data);
