@@ -45,15 +45,23 @@
 var draggable = false;
 var orientation = 'white';
 
+
 // Set draggable to false if the user is observer
 if ('{{ user.username }}' == '{{ room.room_owner.username }}' || '{{ user.username }}' == '{{ room.room_opponent.username }}') {
     draggable = true;
 }
+// Set orientation to black if the user is owner and the room owner side is black 
+if ( '{{ user.username }}' == '{{ room.room_owner.username }}'  && '{{room.room_owner_side.value }}' == 1 ){
+    orientation = 'black'
+}
 
-// Set orientation to black if the user is opponent
-if ('{{ user.username }}' == '{{ room.room_opponent.username }}') {
+// Set orientation to black if the user is opponent and the room owner side is white
+if ('{{ user.username }}' == '{{ room.room_opponent.username }}' &&  '{{room.room_owner_side.value}}'  == 0 ) {
     orientation = 'black';
 }
+
+
+
 
 const board = Chessboard2('myBoard', {
     draggable: draggable,

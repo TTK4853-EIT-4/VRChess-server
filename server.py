@@ -4,7 +4,7 @@ import os
 from flask_socketio import SocketIO, emit, join_room, leave_room, close_room
 from flask import Flask, make_response, render_template, request, redirect, url_for
 from user import User
-from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode
+from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode , SideColor
 import datetime
 import hashlib
 import json
@@ -253,6 +253,13 @@ def create_room(data):
     # Creating a new room
     room = GameRoom(user)
     room.set_player_mode(player_mode)
+    side = data.get('side')
+    
+    # change side if it's black ( white by default)
+    if side == 'black':
+        room.room_owner_side = SideColor.BLACK
+        print ( SideColor.BLACK)
+    print (SideColor.WHITE)
 
     # if player mode is PlayerMode.BOARD_TWO_PLAYER, add the opponent to the room
     if player_mode == PlayerMode.BOARD_TWO_PLAYER.value:
