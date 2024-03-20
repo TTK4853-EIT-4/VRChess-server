@@ -436,7 +436,7 @@ def piece_move(data):
             # return data: {move: move, fen: room.game.fen()}
             return_data = {'move': move, 'fen': room.game.fen()}
 
-            emit('piece_moved', return_data, room=room_id, skip_sid=request.sid)
+            emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
             return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
         else:
             return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
