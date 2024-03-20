@@ -100,7 +100,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Probably we can add some options here in the future...
+                <div class="mb-3">
+                    <label for="sideSelection" class="form-label">Select side:</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="sideSelection" id="whiteSide" value="white" checked>
+                        <label class="form-check-label" for="whiteSide">White</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="sideSelection" id="blackSide" value="black">
+                        <label class="form-check-label" for="blackSide">Black</label>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancel</button>
@@ -134,9 +144,12 @@
     };
 
     $('#roomCreateButton').on('click', function () {
+        var sideSelection = document.querySelector('input[name="sideSelection"]:checked').value;
+
         var options = {
             player_mode: PlayerMode.STANDARD, // Standard mode with 2 players on 2 different clients
-            opponent: null
+            opponent: null,
+            side: sideSelection  
         };
 
         socket.emit('create_room', options,

@@ -14,10 +14,15 @@ class PlayerMode(Enum):
     BOARD_TWO_PLAYER = 2 # Two players on the same physical board
     # For BOARD_TWO_PLAYERS the opponent will be set by username on the room creation
 
+class SideColor(Enum):
+    WHITE = 0
+    BLACK = 1
+
 class GameRoom:
     def __init__(self, room_owner):
         self.room_id = str(uuid.uuid1())
         self.room_owner = room_owner
+        self.room_owner_side = SideColor.WHITE
         self.room_opponent = None
         self.observers = []
         self.game = chess.Board()
@@ -101,6 +106,7 @@ class GameRoomJSONEncoder(JSONEncoder):
             return {
                 "room_id": obj.room_id,
                 "room_owner": obj.room_owner.serialize() if obj.room_owner else None,
+                "room_owner_side" : obj.room_owner_side.value ,
                 "room_opponent": obj.room_opponent.serialize() if obj.room_opponent else None,
                 "observers": [observer.serialize() for observer in obj.observers],
                 "game_status": obj.game_status.value,
