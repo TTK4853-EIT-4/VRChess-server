@@ -415,7 +415,7 @@ def subscribe_to_room(data):
         return {'status': 'error', 'message': f"Room {room_id} does not exist"}
 
 
-# On piece_move event
+# On piece_move event with move validation
 @socketio.on('piece_move')
 @login_required
 def piece_move(data):
@@ -445,6 +445,25 @@ def piece_move(data):
 
             emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
             return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
+        else:
+            return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
+    else:
+        return {'status': 'error', 'message': f"Room {room_id} does not exist"}
+
+
+# On piece_move_notify event which do not validate the move but only notify the move to the room participants
+@socketio.on('piece_move_notify')
+@login_required
+def piece_move_notify(data):
+    # data format: { "room_id": "xxx", "move": { "fen": "xxx" } }
+    room_id = data.get('room_id')
+    move = data.get('move') # format: { "fen": "xxx" }
+    user = get_logged_in_user()
+    room = game_rooms.get(room_id)
+    if room:
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
+            emit('piece_moved_', move, room=room_id, skip_sid=request.sid)
+            return {'status': 'success', 'message': f'Piece moved successfully'}
         else:
             return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
     else:
