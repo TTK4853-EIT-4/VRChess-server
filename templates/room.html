@@ -14,6 +14,9 @@
                 <div class="mb-3 text-center">
                     <h3>Opponent: <span id="room_opponent">{{ room.room_opponent.username }}</span></h3>
                 </div>
+                <div class="mb-3 text-center">
+                    <h3>Game status: <span id="game_status"> </span></h3>
+                </div>
             </div>
         </div>
         <div class="row justify-content-center">
@@ -40,14 +43,34 @@
 {% endblock %}
 
 {% block footerjs %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.1/chess.js"></script>
 <script>
+
 // Define draggable settings for opponent and room owner
 var draggableOpponent = false; // Disable draggable for opponent's pieces
 var draggableRoomOwner = false; // Disable draggable for all pieces initially
 var draggable = false;
 var orientation = 'white';
 var GlobalFen = '{{ room.game.fen() }}';
+var GlobalStatus = '{{ room.game_status.value }}';
 
+// this variable is used to show the legal mooves
+var game = new Chess( '{{ room.game.fen() }}' );
+
+
+// Set initial game status when the page loads
+$(document).ready(function() {
+    if (GlobalStatus == 1) {
+        $('#game_status').text('Waiting for opponent');
+    }
+    else if (GlobalStatus == 2) {
+        $('#game_status').text('Game started');
+    }
+    else {
+        $('#game_status').text('Game ended');
+    }
+});
 
 // Set draggable to false if the user is observer
 if ('{{ user.username }}' == '{{ room.room_owner.username }}' || '{{ user.username }}' == '{{ room.room_opponent.username }}') {
@@ -71,8 +94,18 @@ function onDragStart (dragInfo) {
    var fen = GlobalFen;
    var roomOwnerSide = '{{ room.room_owner_side.value }}';
    var isTurn = isPlayerTurn(fen, roomOwnerSide);
-   console.log('is player turn' , isTurn);
-   if (isTurn) {
+   console.log('GlobalStatus = ' , GlobalStatus  );
+   if (isTurn && GlobalStatus == 2 ) {
+    // what moves are available to from this square?
+    const legalMoves = game.moves({
+    square: dragInfo.square,
+    verbose: true
+        })
+
+    // place Circles on the possible target squares
+    legalMoves.forEach((move) => {
+        board.addCircle(move.to)
+    })
   if (dragInfo.orientation === 'white' && !isWhitePiece(dragInfo.piece)) return false
   if (dragInfo.orientation === 'black' && !isBlackPiece(dragInfo.piece)) return false
     }
@@ -154,7 +187,17 @@ socket.on('room_updated_', function(data) {
     data = jQuery.parseJSON(data);
     console.log('Room update event received');
     console.log(data);
+    GlobalStatus = data.game_status ;
 
+    if (GlobalStatus == 1) {
+        $('#game_status').text('Waiting for opponent');
+    }
+    else if (GlobalStatus == 2) {
+        $('#game_status').text('Game started');
+    }
+    else {
+        $('#game_status').text('Game ended'); 
+     }
     if (data.room_opponent) {
         $('#room_opponent').text(data.room_opponent.username);
     }
@@ -186,6 +229,9 @@ function onDrop (data) {
         }
     };
 
+    // remove all Circles from the board
+    board.clearCircles()
+
     socket.emit('piece_move', data_to_send, 
     (response) => {
 
@@ -193,7 +239,8 @@ function onDrop (data) {
             console.log('Piece moved successfully');
             console.log(response.data);
             board.position(response.data);
-            GlobalFen = response.data 
+            GlobalFen = response.data ;
+            game = new Chess(response.data);
         } else {
             console.log(response.message);
 
@@ -215,6 +262,7 @@ socket.on('piece_moved_', function(data) {
     console.log('Piece moved event received');
     console.log(data);
     GlobalFen = data.fen;
+    game = new Chess(data.fen);
 
     // Move the piece on the board
     //board.move(data.move.source + '-' + data.move.target);
