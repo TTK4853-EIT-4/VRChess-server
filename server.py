@@ -258,8 +258,6 @@ def create_room(data):
     # change side if it's black ( white by default)
     if side == 'black':
         room.room_owner_side = SideColor.BLACK
-        print ( SideColor.BLACK)
-    print (SideColor.WHITE)
 
     # if player mode is PlayerMode.BOARD_TWO_PLAYER, add the opponent to the room
     if player_mode == PlayerMode.BOARD_TWO_PLAYER.value:
@@ -443,7 +441,7 @@ def piece_move(data):
             # return data: {move: move, fen: room.game.fen()}
             return_data = {'move': move, 'fen': room.game.fen()}
 
-            emit('piece_moved', return_data, room=room_id, skip_sid=request.sid)
+            emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
             return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
         else:
             return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
