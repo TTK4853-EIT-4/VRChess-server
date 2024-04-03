@@ -41,9 +41,12 @@
 
 {% block footerjs %}
 <script>
-
+// Define draggable settings for opponent and room owner
+var draggableOpponent = false; // Disable draggable for opponent's pieces
+var draggableRoomOwner = false; // Disable draggable for all pieces initially
 var draggable = false;
 var orientation = 'white';
+var GlobalFen = '{{ room.game.fen() }}';
 
 
 // Set draggable to false if the user is observer
@@ -63,6 +66,43 @@ if ('{{ user.username }}' == '{{ room.room_opponent.username }}' &&  '{{room.roo
 
 
 
+// only allow pieces to be dragged when the board is oriented in their direction
+function onDragStart (dragInfo) {
+   var fen = GlobalFen;
+   var roomOwnerSide = '{{ room.room_owner_side.value }}';
+   var isTurn = isPlayerTurn(fen, roomOwnerSide);
+   console.log('is player turn' , isTurn);
+   if (isTurn) {
+  if (dragInfo.orientation === 'white' && !isWhitePiece(dragInfo.piece)) return false
+  if (dragInfo.orientation === 'black' && !isBlackPiece(dragInfo.piece)) return false
+    }
+    else{ 
+        return false;
+    }
+
+}
+
+function isWhitePiece (piece) { return /^w/.test(piece) }
+function isBlackPiece (piece) { return /^b/.test(piece) }
+
+
+// Function to determine if it's the player's turn based on FEN and room owner's side
+function isPlayerTurn(fen, roomOwnerSide) {
+    // Determine the player's side based on the room owner's side
+    var playerSide = roomOwnerSide == 0 ? 'w' : 'b';
+    console.log(playerSide , 'player side');
+    // Extract the current turn from the FEN string
+    var turn = fen.split(' ')[1]; ;
+    console.log(fen , 'current fen ');
+    // Compare the player's side with the current turn
+    console.log('Playerside', playerSide == turn );
+    return (turn === playerSide && '{{ user.username }}' == '{{ room.room_owner.username }}') || (turn !== playerSide && '{{ user.username }}' == '{{ room.room_opponent.username }}');
+}
+
+
+
+
+
 const board = Chessboard2('myBoard', {
     draggable: draggable,
     moveSpeed: 'slow',
@@ -70,7 +110,8 @@ const board = Chessboard2('myBoard', {
     snapSpeed: 100,
     position: 'start', // Set the position to the starting position
     onDrop,
-    orientation: orientation
+    orientation: orientation,
+    onDragStart: onDragStart
 });
 
 // Set the board pieces from FEN on page load
@@ -152,6 +193,7 @@ function onDrop (data) {
             console.log('Piece moved successfully');
             console.log(response.data);
             board.position(response.data);
+            GlobalFen = response.data 
         } else {
             console.log(response.message);
 
@@ -172,6 +214,7 @@ function onDrop (data) {
 socket.on('piece_moved_', function(data) {
     console.log('Piece moved event received');
     console.log(data);
+    GlobalFen = data.fen;
 
     // Move the piece on the board
     //board.move(data.move.source + '-' + data.move.target);

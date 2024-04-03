@@ -258,8 +258,6 @@ def create_room(data):
     # change side if it's black ( white by default)
     if side == 'black':
         room.room_owner_side = SideColor.BLACK
-        print ( SideColor.BLACK)
-    print (SideColor.WHITE)
 
     # if player mode is PlayerMode.BOARD_TWO_PLAYER, add the opponent to the room
     if player_mode == PlayerMode.BOARD_TWO_PLAYER.value:
