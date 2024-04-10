@@ -418,14 +418,17 @@ def subscribe_to_room(data):
 @login_required
 def piece_move(data):
     room_id = data.get('room_id')
-    move = data.get('move') # format: { "source": "c7", "target": "c5", "piece": "bP" }
+    move = data.get('move') # format: { "source": "c7", "target": "c5", "piece": "bP" , "promotedPiece" : None}
     user = get_logged_in_user()
     room = game_rooms.get(room_id)
     if room:
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
             
             import chess
-            Nf3 = chess.Move.from_uci(move['source'] + move['target'])
+            if ( move['promotedPiece'] is None):
+                Nf3 = chess.Move.from_uci(move['source'] + move['target'] )
+            else :
+                Nf3 = chess.Move.from_uci(move['source'] + move['target']+ move['promotedPiece'] )
 
             # check if the move is valid
             if Nf3 not in room.game.legal_moves:
