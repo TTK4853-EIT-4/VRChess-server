@@ -17,6 +17,9 @@
                 <div class="mb-3 text-center">
                     <h3>Game status: <span id="game_status"> </span></h3>
                 </div>
+                <div class="mb-3 text-center">
+                    <h3><span id="gameStatus"> </span></h3>
+                </div>
             </div>
         </div>
         <div class="row justify-content-center">
@@ -164,10 +167,8 @@
     function isPlayerTurn(fen, roomOwnerSide) {
         // Determine the player's side based on the room owner's side
         var playerSide = roomOwnerSide == 0 ? 'w' : 'b';
-        console.log(playerSide, 'player side');
         // Extract the current turn from the FEN string
         var turn = fen.split(' ')[1];;
-        console.log(fen, 'current fen ');
         // Compare the player's side with the current turn
         console.log('Playerside', playerSide == turn);
         return (turn === playerSide && '{{ user.username }}' == '{{ room.room_owner.username }}') || (turn !== playerSide && '{{ user.username }}' == '{{ room.room_opponent.username }}');
@@ -284,57 +285,6 @@
         };
 
 
-    socket.emit('piece_move', data_to_send,
-        (response) => {
-
-            if (response.status == 'success') {
-                console.log('Piece moved successfully');
-                console.log(response.data);
-                board.position(response.data);
-                GlobalFen = response.data;
-                game = new Chess(response.data);
-            } else {
-                console.log(response.message);
-                console.log(data_to_send);
-
-                // Show error message
-                Toastify({
-                    className: "tostify-danger",
-                    text: response.message,
-                    duration: 3000
-                }).showToast();
-
-                // Rollback the move on the board
-                board.position(rowback);
-            }
-        });
-    }
-
-    // socket on piece_moved event
-    socket.on('piece_moved_', function (data) {
-        console.log('Piece moved event received');
-        console.log(data);
-        GlobalFen = data.fen;
-        game = new Chess(data.fen);
-
-        // Move the piece on the board
-        //board.move(data.move.source + '-' + data.move.target);
-        board.position(data.fen);
-    });
-
-    // function which emits test event
-    function test() {
-        socket.emit('test', {
-            data: 'test'
-        });
-    }
-
-    $('.promotion-option').on('click', function () {
-        var promotedPiece = $(this).data('piece');
-
-        data_to_send.move.promotedPiece = promotedPiece;
-        $('#promotionModal').modal('hide');
-
         socket.emit('piece_move', data_to_send,
             (response) => {
 
@@ -344,6 +294,7 @@
                     board.position(response.data);
                     GlobalFen = response.data;
                     game = new Chess(response.data);
+                    is_game_over(game);
                 } else {
                     console.log(response.message);
                     console.log(data_to_send);
@@ -359,7 +310,83 @@
                     board.position(rowback);
                 }
             });
+    }
+
+    // socket on piece_moved event
+    socket.on('piece_moved_', function (data) {
+        console.log('Piece moved event received');
+        console.log(data);
+        GlobalFen = data.fen;
+        game = new Chess(data.fen);
+        is_game_over(game);
+
+        // Move the piece on the board
+        //board.move(data.move.source + '-' + data.move.target);
+        board.position(data.fen);
     });
+
+    function is_game_over(game) {
+        if (game.game_over()) {
+            if (game.in_checkmate() && game.turn() === 'w') {
+                statusHTML = 'Game over: white is in checkmate. Black wins!'
+            } else if (game.in_checkmate() && game.turn() === 'b') {
+                statusHTML = 'Game over: black is in checkmate. White wins!'
+            } else if (game.in_stalemate() && game.turn() === 'w') {
+                statusHTML = 'Game is drawn. White is stalemated.'
+            } else if (game.in_stalemate() && game.turn() === 'b') {
+                statusHTML = 'Game is drawn. Black is stalemated.'
+            } else if (game.in_threefold_repetition()) {
+                statusHTML = 'Game is drawn by threefold repetition rule.'
+            }
+            else if (game.in_fivefold_repetition()) {
+                statusHTML = 'Game is drawn by fivefold repetition rule.'
+            } else if (game.insufficient_material()) {
+                statusHTML = 'Game is drawn by insufficient material.'
+            } else if (game.in_draw()) {
+                statusHTML = 'Game is drawn by fifty-move rule.'
+            }
+            document.getElementById('gameStatus').innerHTML = statusHTML;
+        }
+    };
+
+        // function which emits test event
+        function test() {
+            socket.emit('test', {
+                data: 'test'
+            });
+        }
+
+        $('.promotion-option').on('click', function () {
+            var promotedPiece = $(this).data('piece');
+
+            data_to_send.move.promotedPiece = promotedPiece;
+            $('#promotionModal').modal('hide');
+
+            socket.emit('piece_move', data_to_send,
+                (response) => {
+
+                    if (response.status == 'success') {
+                        console.log('Piece moved successfully');
+                        console.log(response.data);
+                        board.position(response.data);
+                        GlobalFen = response.data;
+                        game = new Chess(response.data);
+                    } else {
+                        console.log(response.message);
+                        console.log(data_to_send);
+
+                        // Show error message
+                        Toastify({
+                            className: "tostify-danger",
+                            text: response.message,
+                            duration: 3000
+                        }).showToast();
+
+                        // Rollback the move on the board
+                        board.position(rowback);
+                    }
+                });
+        });
 
 
 </script>

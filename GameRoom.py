@@ -52,10 +52,14 @@ class GameRoom:
         self.game = chess.Board()
         self.game_status = GameStatus.STARTED
 
-    def end_game(self, winner, loser, draw):
-        self.game_winner = winner
-        self.game_loser = loser
-        self.game_draw = draw
+    def end_game(self, winnerSide = None):
+        if winnerSide is not None :
+            if winnerSide == self.room_owner_side:
+                self.game_winner = self.room_owner
+                self.game_loser = self.room_opponent
+            else:
+                self.game_winner = self.room_opponent
+                self.game_loser = self.room_owner
         self.game_status = GameStatus.ENDED
 
     def get_game_state(self):
@@ -75,9 +79,6 @@ class GameRoom:
 
     def get_game_loser(self):
         return self.game_loser
-
-    def get_game_draw(self):
-        return self.game_draw
 
     def get_players(self):
         return self.room_owner, self.room_opponent
@@ -110,8 +111,8 @@ class GameRoomJSONEncoder(JSONEncoder):
                 "room_opponent": obj.room_opponent.serialize() if obj.room_opponent else None,
                 "observers": [observer.serialize() for observer in obj.observers],
                 "game_status": obj.game_status.value,
-                "game_winner": obj.game_winner,
-                "game_loser": obj.game_loser,
+                "game_winner": obj.game_winner.serialize() if obj.game_winner else None,
+                "game_loser": obj.game_loser.serialize() if obj.game_loser else None,
                 "game": obj.game.fen() if obj.game else None,
                 "player_mode": obj.player_mode
             }
