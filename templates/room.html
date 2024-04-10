@@ -17,6 +17,9 @@
                 <div class="mb-3 text-center">
                     <h3>Game status: <span id="game_status"> </span></h3>
                 </div>
+                <div class="mb-3 text-center">
+                    <h3><span id="gameStatus"> </span></h3>
+                </div>
             </div>
         </div>
         <div class="row justify-content-center">
@@ -38,8 +41,48 @@
                     </ul>
                 </div>
             </div>
+        </div>
     </div>
 </div>
+<!-- Promotion Modal -->
+<div class="modal fade" id="promotionModal" tabindex="-1" role="dialog" aria-labelledby="promotionModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="promotionModalLabel">Choose Promotion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please choose a piece to promote the pawn:</p>
+                <div class="row">
+                    <div class="col-3">
+                        <button class="btn btn-secondary btn-lg btn-block promotion-option" data-piece="q">
+                            <span class="chess-piece">&#9813;</span> <!-- Queen -->
+                        </button>
+                    </div>
+                    <div class="col-3">
+                        <button class="btn btn-secondary btn-lg btn-block promotion-option" data-piece="r">
+                            <span class="chess-piece">&#9814;</span> <!-- Rook -->
+                        </button>
+                    </div>
+                    <div class="col-3">
+                        <button class="btn btn-secondary btn-lg btn-block promotion-option" data-piece="b">
+                            <span class="chess-piece">&#9815;</span> <!-- Bishop -->
+                        </button>
+                    </div>
+                    <div class="col-3">
+                        <button class="btn btn-secondary btn-lg btn-block promotion-option" data-piece="n">
+                            <span class="chess-piece">&#9816;</span> <!-- Knight -->
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 
 {% block footerjs %}
@@ -47,234 +90,304 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.1/chess.js"></script>
 <script>
 
-// Define draggable settings for opponent and room owner
-var draggableOpponent = false; // Disable draggable for opponent's pieces
-var draggableRoomOwner = false; // Disable draggable for all pieces initially
-var draggable = false;
-var orientation = 'white';
-var GlobalFen = '{{ room.game.fen() }}';
-var GlobalStatus = '{{ room.game_status.value }}';
+    // Define draggable settings for opponent and room owner
+    var draggableOpponent = false; // Disable draggable for opponent's pieces
+    var draggableRoomOwner = false; // Disable draggable for all pieces initially
+    var draggable = false;
+    var orientation = 'white';
+    var GlobalFen = '{{ room.game.fen() }}';
+    var GlobalStatus = '{{ room.game_status.value }}';
+    var data_to_send = {};
 
-// this variable is used to show the legal mooves
-var game = new Chess( '{{ room.game.fen() }}' );
-
-
-// Set initial game status when the page loads
-$(document).ready(function() {
-    if (GlobalStatus == 1) {
-        $('#game_status').text('Waiting for opponent');
-    }
-    else if (GlobalStatus == 2) {
-        $('#game_status').text('Game started');
-    }
-    else {
-        $('#game_status').text('Game ended');
-    }
-});
-
-// Set draggable to false if the user is observer
-if ('{{ user.username }}' == '{{ room.room_owner.username }}' || '{{ user.username }}' == '{{ room.room_opponent.username }}') {
-    draggable = true;
-}
-// Set orientation to black if the user is owner and the room owner side is black 
-if ( '{{ user.username }}' == '{{ room.room_owner.username }}'  && '{{room.room_owner_side.value }}' == 1 ){
-    orientation = 'black'
-}
-
-// Set orientation to black if the user is opponent and the room owner side is white
-if ('{{ user.username }}' == '{{ room.room_opponent.username }}' &&  '{{room.room_owner_side.value}}'  == 0 ) {
-    orientation = 'black';
-}
+    // this variable is used to show the legal mooves
+    var game = new Chess('{{ room.game.fen() }}');
 
 
-
-
-// only allow pieces to be dragged when the board is oriented in their direction
-function onDragStart (dragInfo) {
-   var fen = GlobalFen;
-   var roomOwnerSide = '{{ room.room_owner_side.value }}';
-   var isTurn = isPlayerTurn(fen, roomOwnerSide);
-   console.log('GlobalStatus = ' , GlobalStatus  );
-   if (isTurn && GlobalStatus == 2 ) {
-    // what moves are available to from this square?
-    const legalMoves = game.moves({
-    square: dragInfo.square,
-    verbose: true
-        })
-
-    // place Circles on the possible target squares
-    legalMoves.forEach((move) => {
-        board.addCircle(move.to)
-    })
-  if (dragInfo.orientation === 'white' && !isWhitePiece(dragInfo.piece)) return false
-  if (dragInfo.orientation === 'black' && !isBlackPiece(dragInfo.piece)) return false
-    }
-    else{ 
-        return false;
-    }
-
-}
-
-function isWhitePiece (piece) { return /^w/.test(piece) }
-function isBlackPiece (piece) { return /^b/.test(piece) }
-
-
-// Function to determine if it's the player's turn based on FEN and room owner's side
-function isPlayerTurn(fen, roomOwnerSide) {
-    // Determine the player's side based on the room owner's side
-    var playerSide = roomOwnerSide == 0 ? 'w' : 'b';
-    console.log(playerSide , 'player side');
-    // Extract the current turn from the FEN string
-    var turn = fen.split(' ')[1]; ;
-    console.log(fen , 'current fen ');
-    // Compare the player's side with the current turn
-    console.log('Playerside', playerSide == turn );
-    return (turn === playerSide && '{{ user.username }}' == '{{ room.room_owner.username }}') || (turn !== playerSide && '{{ user.username }}' == '{{ room.room_opponent.username }}');
-}
-
-
-
-
-
-const board = Chessboard2('myBoard', {
-    draggable: draggable,
-    moveSpeed: 'slow',
-    snapbackSpeed: 500,
-    snapSpeed: 100,
-    position: 'start', // Set the position to the starting position
-    onDrop,
-    orientation: orientation,
-    onDragStart: onDragStart
-});
-
-// Set the board pieces from FEN on page load
-console.log('{{ room.game.fen() }}');
-board.position('{{ room.game.fen() }}');
-
-var socket = io.connect('http://' + document.domain + ':' + location.port);
-
-socket.on('connect', function() {
-    var room_id = '{{ room.room_id }}';
-    console.log(room_id);
-
-    var options = {
-        room_id: room_id
-    };
-
-    // Emit subscribe_to_room event and process the response
-    socket.emit('subscribe_to_room', options, 
-    (response) => {
-
-        if (response.status == 'success') {
-            console.log('Subscribed to room');
-        } else {
-            console.log('Failed to subscribe to room');
-
-            // Show error message
-            Toastify({
-                className: "tostify-danger",
-                text: response.message,
-                duration: 3000
-            }).showToast();
-
-            // TODO: Redirect to home page maybe?
+    // Set initial game status when the page loads
+    $(document).ready(function () {
+        if (GlobalStatus == 1) {
+            $('#game_status').text('Waiting for opponent');
+        }
+        else if (GlobalStatus == 2) {
+            $('#game_status').text('Game started');
+        }
+        else {
+            $('#game_status').text('Game ended');
         }
     });
-});
 
-// socket on room_update event
-socket.on('room_updated_', function(data) {
-    data = jQuery.parseJSON(data);
-    console.log('Room update event received');
-    console.log(data);
-    GlobalStatus = data.game_status ;
-
-    if (GlobalStatus == 1) {
-        $('#game_status').text('Waiting for opponent');
+    // Set draggable to false if the user is observer
+    if ('{{ user.username }}' == '{{ room.room_owner.username }}' || '{{ user.username }}' == '{{ room.room_opponent.username }}') {
+        draggable = true;
     }
-    else if (GlobalStatus == 2) {
-        $('#game_status').text('Game started');
-    }
-    else {
-        $('#game_status').text('Game ended'); 
-     }
-    if (data.room_opponent) {
-        $('#room_opponent').text(data.room_opponent.username);
+    // Set orientation to black if the user is owner and the room owner side is black 
+    if ('{{ user.username }}' == '{{ room.room_owner.username }}' && '{{room.room_owner_side.value }}' == 1) {
+        orientation = 'black'
     }
 
-    if (data.observers) {
-        $('#observer_count').text(data.observers.length);
-        $('#observers_list').empty();
-        data.observers.forEach(function(observer) {
-            $('#observers_list').append('<li>' + observer.username + '</li>');
+    // Set orientation to black if the user is opponent and the room owner side is white
+    if ('{{ user.username }}' == '{{ room.room_opponent.username }}' && '{{room.room_owner_side.value}}' == 0) {
+        orientation = 'black';
+    }
+
+
+
+
+    // only allow pieces to be dragged when the board is oriented in their direction
+    function onDragStart(dragInfo) {
+        var fen = GlobalFen;
+        var roomOwnerSide = '{{ room.room_owner_side.value }}';
+        var isTurn = isPlayerTurn(fen, roomOwnerSide);
+        console.log('GlobalStatus = ', GlobalStatus);
+        if (isTurn && GlobalStatus == 2) {
+            // what moves are available to from this square?
+            const legalMoves = game.moves({
+                square: dragInfo.square,
+                verbose: true
+            })
+
+            // place Circles on the possible target squares
+            legalMoves.forEach((move) => {
+                board.addCircle(move.to)
+            })
+            if (dragInfo.orientation === 'white' && !isWhitePiece(dragInfo.piece)) return false
+            if (dragInfo.orientation === 'black' && !isBlackPiece(dragInfo.piece)) return false
+        }
+        else {
+            return false;
+        }
+
+    }
+
+    function isWhitePiece(piece) { return /^w/.test(piece) }
+    function isBlackPiece(piece) { return /^b/.test(piece) }
+
+
+    // Function to determine if it's the player's turn based on FEN and room owner's side
+    function isPlayerTurn(fen, roomOwnerSide) {
+        // Determine the player's side based on the room owner's side
+        var playerSide = roomOwnerSide == 0 ? 'w' : 'b';
+        // Extract the current turn from the FEN string
+        var turn = fen.split(' ')[1];;
+        // Compare the player's side with the current turn
+        console.log('Playerside', playerSide == turn);
+        return (turn === playerSide && '{{ user.username }}' == '{{ room.room_owner.username }}') || (turn !== playerSide && '{{ user.username }}' == '{{ room.room_opponent.username }}');
+    }
+
+
+
+
+
+    const board = Chessboard2('myBoard', {
+        draggable: draggable,
+        moveSpeed: 'slow',
+        snapbackSpeed: 500,
+        snapSpeed: 100,
+        position: 'start', // Set the position to the starting position
+        onDrop,
+        orientation: orientation,
+        onDragStart: onDragStart
+    });
+
+    // Set the board pieces from FEN on page load
+    console.log('{{ room.game.fen() }}');
+    board.position('{{ room.game.fen() }}');
+
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    socket.on('connect', function () {
+        var room_id = '{{ room.room_id }}';
+        console.log(room_id);
+
+        var options = {
+            room_id: room_id
+        };
+
+        // Emit subscribe_to_room event and process the response
+        socket.emit('subscribe_to_room', options,
+            (response) => {
+
+                if (response.status == 'success') {
+                    console.log('Subscribed to room');
+                } else {
+                    console.log('Failed to subscribe to room');
+
+                    // Show error message
+                    Toastify({
+                        className: "tostify-danger",
+                        text: response.message,
+                        duration: 3000
+                    }).showToast();
+
+                    // TODO: Redirect to home page maybe?
+                }
+            });
+    });
+
+    // socket on room_update event
+    socket.on('room_updated_', function (data) {
+        data = jQuery.parseJSON(data);
+        console.log('Room update event received');
+        console.log(data);
+        GlobalStatus = data.game_status;
+
+        if (GlobalStatus == 1) {
+            $('#game_status').text('Waiting for opponent');
+        }
+        else if (GlobalStatus == 2) {
+            $('#game_status').text('Game started');
+        }
+        else {
+            $('#game_status').text('Game ended');
+        }
+        if (data.room_opponent) {
+            $('#room_opponent').text(data.room_opponent.username);
+        }
+
+        if (data.observers) {
+            $('#observer_count').text(data.observers.length);
+            $('#observers_list').empty();
+            data.observers.forEach(function (observer) {
+                $('#observers_list').append('<li>' + observer.username + '</li>');
+            });
+        }
+    });
+
+    // On piece move event emit move event to server
+    function onDrop(data) {
+        data = jQuery.parseJSON(JSON.stringify(data)); // Format = {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
+
+        console.log(data);
+
+        // Save the current board position before moving the piece to rollback in case of error
+        var rowback = board.position();
+
+        data_to_send = {
+            room_id: '{{ room.room_id }}',
+            move: {
+                source: data.source,
+                target: data.target,
+                piece: data.piece,
+                promotedPiece: null,
+            }
+        };
+
+        // remove all Circles from the board
+        board.clearCircles()
+
+
+        // Detect if the moved piece is a pawn and reached the promotion rank
+        if (data.piece[1] === 'P' && (data.target[1] === '8' || data.target[1] === '1')) {
+            // Display a modal or UI element to let the user choose the promoted piece
+            // Example: Show a modal with options (queen, rook, bishop, knight)
+            $('#promotionModal').modal('show');
+            return 'snapback';
+        };
+
+
+        socket.emit('piece_move', data_to_send,
+            (response) => {
+
+                if (response.status == 'success') {
+                    console.log('Piece moved successfully');
+                    console.log(response.data);
+                    board.position(response.data);
+                    GlobalFen = response.data;
+                    game = new Chess(response.data);
+                    is_game_over(game);
+                } else {
+                    console.log(response.message);
+                    console.log(data_to_send);
+
+                    // Show error message
+                    Toastify({
+                        className: "tostify-danger",
+                        text: response.message,
+                        duration: 3000
+                    }).showToast();
+
+                    // Rollback the move on the board
+                    board.position(rowback);
+                }
+            });
+    }
+
+    // socket on piece_moved event
+    socket.on('piece_moved_', function (data) {
+        console.log('Piece moved event received');
+        console.log(data);
+        GlobalFen = data.fen;
+        game = new Chess(data.fen);
+        is_game_over(game);
+
+        // Move the piece on the board
+        //board.move(data.move.source + '-' + data.move.target);
+        board.position(data.fen);
+    });
+
+    function is_game_over(game) {
+        if (game.game_over()) {
+            if (game.in_checkmate() && game.turn() === 'w') {
+                statusHTML = 'Game over: white is in checkmate. Black wins!'
+            } else if (game.in_checkmate() && game.turn() === 'b') {
+                statusHTML = 'Game over: black is in checkmate. White wins!'
+            } else if (game.in_stalemate() && game.turn() === 'w') {
+                statusHTML = 'Game is drawn. White is stalemated.'
+            } else if (game.in_stalemate() && game.turn() === 'b') {
+                statusHTML = 'Game is drawn. Black is stalemated.'
+            } else if (game.in_threefold_repetition()) {
+                statusHTML = 'Game is drawn by threefold repetition rule.'
+            }
+            else if (game.in_fivefold_repetition()) {
+                statusHTML = 'Game is drawn by fivefold repetition rule.'
+            } else if (game.insufficient_material()) {
+                statusHTML = 'Game is drawn by insufficient material.'
+            } else if (game.in_draw()) {
+                statusHTML = 'Game is drawn by fifty-move rule.'
+            }
+            document.getElementById('gameStatus').innerHTML = statusHTML;
+        }
+    };
+
+        // function which emits test event
+        function test() {
+            socket.emit('test', {
+                data: 'test'
+            });
+        }
+
+        $('.promotion-option').on('click', function () {
+            var promotedPiece = $(this).data('piece');
+
+            data_to_send.move.promotedPiece = promotedPiece;
+            $('#promotionModal').modal('hide');
+
+            socket.emit('piece_move', data_to_send,
+                (response) => {
+
+                    if (response.status == 'success') {
+                        console.log('Piece moved successfully');
+                        console.log(response.data);
+                        board.position(response.data);
+                        GlobalFen = response.data;
+                        game = new Chess(response.data);
+                    } else {
+                        console.log(response.message);
+                        console.log(data_to_send);
+
+                        // Show error message
+                        Toastify({
+                            className: "tostify-danger",
+                            text: response.message,
+                            duration: 3000
+                        }).showToast();
+
+                        // Rollback the move on the board
+                        board.position(rowback);
+                    }
+                });
         });
-    }
-});
 
-// On piece move event emit move event to server
-function onDrop (data) {
-    data = jQuery.parseJSON(JSON.stringify(data)); // Format = {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
-
-    console.log(data);
-
-    // Save the current board position before moving the piece to rollback in case of error
-    var rowback = board.position();
-
-    var data_to_send = {
-        room_id: '{{ room.room_id }}',
-        move: {
-            source: data.source,
-            target: data.target,
-            piece: data.piece
-        }
-    };
-
-    // remove all Circles from the board
-    board.clearCircles()
-
-    socket.emit('piece_move', data_to_send, 
-    (response) => {
-
-        if (response.status == 'success') {
-            console.log('Piece moved successfully');
-            console.log(response.data);
-            board.position(response.data);
-            GlobalFen = response.data ;
-            game = new Chess(response.data);
-        } else {
-            console.log(response.message);
-
-            // Show error message
-            Toastify({
-                className: "tostify-danger",
-                text: response.message,
-                duration: 3000
-            }).showToast();
-
-            // Rollback the move on the board
-            board.position(rowback);
-        }
-    });
-}
-
-// socket on piece_moved event
-socket.on('piece_moved_', function(data) {
-    console.log('Piece moved event received');
-    console.log(data);
-    GlobalFen = data.fen;
-    game = new Chess(data.fen);
-
-    // Move the piece on the board
-    //board.move(data.move.source + '-' + data.move.target);
-    board.position(data.fen);
-});
-
-// function which emits test event
-function test() {
-    socket.emit('test', {
-        data: 'test'
-    });
-}
 
 </script>
 {% endblock %}

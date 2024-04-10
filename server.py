@@ -138,10 +138,13 @@ def room(room_id):
         return redirect(url_for('login'))
     # Fetch room details based on room_id
     room = game_rooms.get(str(room_id))
-    if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
+    if room :
+        if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
                 return render_template('room.html', title="VRChess - Room", user=user , room = room)
-    return { 'status' : 'error' , 'message' : f"Your are not in this room {room.room_id}"}
+        return render_template('room-list.html', title = "VRChess - Rooms", user = user , error_message=f"You are not this room")
+    else :
+        return render_template('room-list.html', title = "VRChess - Rooms", user = user , error_message=f"Room not found")
 
 
 
@@ -418,29 +421,63 @@ def subscribe_to_room(data):
 @login_required
 def piece_move(data):
     room_id = data.get('room_id')
-    move = data.get('move') # format: { "source": "c7", "target": "c5", "piece": "bP" }
+    move = data.get('move') # format: { "source": "c7", "target": "c5", "piece": "bP" , "promotedPiece" : None}
     user = get_logged_in_user()
     room = game_rooms.get(room_id)
     if room:
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
             
             import chess
-            Nf3 = chess.Move.from_uci(move['source'] + move['target'])
+            if  move['promotedPiece'] is None:
+                Nf3 = chess.Move.from_uci(move['source'] + move['target'] )
+            else :
+                Nf3 = chess.Move.from_uci(move['source'] + move['target']+ move['promotedPiece'] )
 
             # check if the move is valid
             if Nf3 not in room.game.legal_moves:
                 return {'status': 'error', 'message': f"{Nf3} is not a legal move."}
-
+            
             room.game.push(Nf3)
             print("\n")
             print(room.game)
+            
 
             # update the game in list
             game_rooms[room_id] = room
 
+            outcome = room.game.outcome()
+            if outcome is not None:
+                termination = outcome.termination
+                winner = outcome.winner
+                game_rooms.pop(room_id)
+                
+                if termination == chess.Termination.CHECKMATE:
+                    if winner == chess.WHITE:
+                        room.end_game(SideColor.WHITE)
+                        print("Game over: White wins by checkmate!")
+                    else:
+                        room.end_game(SideColor.BLACK)
+                        print("Game over: Black wins by checkmate!")
+                elif termination == chess.Termination.STALEMATE:
+                    room.end_game()
+                    print("Game ended in stalemate!")
+                elif termination == chess.Termination.INSUFFICIENT_MATERIAL:
+                    room.end_game()
+                    print("Game ended due to insufficient material!")
+                elif termination == chess.Termination.FIVEFOLD_REPETITION:
+                    room.end_game()
+                    print("Game ended due to fivefold repetition!")
+                elif termination == chess.Termination.FIFTY_MOVES:
+                    room.end_game()
+                    print("Game ended due to fifty moves rule!")
+                elif termination == chess.Termination.THREEFOLD_REPETITION:
+                    room.end_game()
+                    print("Game ended due to threefold repetition!")   
+                # Emit event to notify only the room participants for the end of the room
+                socketio.emit('room_updated_', room.serialize(), room=room_id) 
+
             # return data: {move: move, fen: room.game.fen()}
             return_data = {'move': move, 'fen': room.game.fen()}
-
             emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
             return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
         else:
