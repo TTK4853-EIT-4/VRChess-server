@@ -258,9 +258,19 @@
         data = jQuery.parseJSON(JSON.stringify(data)); // Format = {"orientation": "white", "piece": "bP", "source": "c7", "target": "c5", "x": 556, "y": 564 }
 
         console.log(data);
+        // remove all Circles from the board
+        board.clearCircles()
 
         // Save the current board position before moving the piece to rollback in case of error
         var rowback = board.position();
+
+        var movelegal = game.move({
+            from: data.source,
+            to: data.target,
+            promotion: 'q' // NOTE: Promoting to a queen by default, handle promotion later
+        });
+
+        if (movelegal === null) return 'snapback';
 
         data_to_send = {
             room_id: '{{ room.room_id }}',
@@ -272,14 +282,11 @@
             }
         };
 
-        // remove all Circles from the board
-        board.clearCircles()
 
 
         // Detect if the moved piece is a pawn and reached the promotion rank
         if (data.piece[1] === 'P' && (data.target[1] === '8' || data.target[1] === '1')) {
             // Display a modal or UI element to let the user choose the promoted piece
-            // Example: Show a modal with options (queen, rook, bishop, knight)
             $('#promotionModal').modal('show');
             return 'snapback';
         };
@@ -349,44 +356,44 @@
         }
     };
 
-        // function which emits test event
-        function test() {
-            socket.emit('test', {
-                data: 'test'
-            });
-        }
-
-        $('.promotion-option').on('click', function () {
-            var promotedPiece = $(this).data('piece');
-
-            data_to_send.move.promotedPiece = promotedPiece;
-            $('#promotionModal').modal('hide');
-
-            socket.emit('piece_move', data_to_send,
-                (response) => {
-
-                    if (response.status == 'success') {
-                        console.log('Piece moved successfully');
-                        console.log(response.data);
-                        board.position(response.data);
-                        GlobalFen = response.data;
-                        game = new Chess(response.data);
-                    } else {
-                        console.log(response.message);
-                        console.log(data_to_send);
-
-                        // Show error message
-                        Toastify({
-                            className: "tostify-danger",
-                            text: response.message,
-                            duration: 3000
-                        }).showToast();
-
-                        // Rollback the move on the board
-                        board.position(rowback);
-                    }
-                });
+    // function which emits test event
+    function test() {
+        socket.emit('test', {
+            data: 'test'
         });
+    }
+
+    $('.promotion-option').on('click', function () {
+        var promotedPiece = $(this).data('piece');
+
+        data_to_send.move.promotedPiece = promotedPiece;
+        $('#promotionModal').modal('hide');
+
+        socket.emit('piece_move', data_to_send,
+            (response) => {
+
+                if (response.status == 'success') {
+                    console.log('Piece moved successfully');
+                    console.log(response.data);
+                    board.position(response.data);
+                    GlobalFen = response.data;
+                    game = new Chess(response.data);
+                } else {
+                    console.log(response.message);
+                    console.log(data_to_send);
+
+                    // Show error message
+                    Toastify({
+                        className: "tostify-danger",
+                        text: response.message,
+                        duration: 3000
+                    }).showToast();
+
+                    // Rollback the move on the board
+                    board.position(rowback);
+                }
+            });
+    });
 
 
 </script>
