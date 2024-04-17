@@ -4,7 +4,7 @@ import os
 from flask_socketio import SocketIO, emit, join_room, leave_room, close_room
 from flask import Flask, make_response, render_template, request, redirect, url_for
 from user import User
-from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode , SideColor
+from GameRoom import GameRoom, GameRoomJSONEncoder, PlayerMode , SideColor , GameStatus
 import datetime
 import hashlib
 import json
@@ -426,7 +426,11 @@ def piece_move(data):
     room = game_rooms.get(room_id)
     if room:
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
-            
+            if room.game_status == GameStatus.WAITING:
+                return {'status': 'error', 'message': "Game didn't start yet. Please wait for opponent"}
+            elif room.game_status == GameStatus.ENDED :
+                return {'status': 'error', 'message': "Game ended. Please start a new room to play again"}
+
             import chess
             if  move['promotedPiece'] is None:
                 Nf3 = chess.Move.from_uci(move['source'] + move['target'] )
