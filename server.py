@@ -409,7 +409,7 @@ def subscribe_to_room(data):
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) or \
             any(observer.id == user.id for observer in room.observers) :
             join_room(room_id, sid=request.sid)
-            return {'status': 'success', 'message': f'Subscribed to room {room_id}'}
+            return {'status': 'success', 'message': f'Subscribed to room {room_id}', 'data': room.serialize()}
         else:
             return {'status': 'error', 'message': f"You are not in this room {room_id}"}
     else:
@@ -483,6 +483,7 @@ def piece_move(data):
             # return data: {move: move, fen: room.game.fen()}
             return_data = {'move': move, 'fen': room.game.fen()}
             emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
+
             return {'status': 'success', 'message': f'Piece moved successfully', 'data': room.game.fen()}
         else:
             return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
