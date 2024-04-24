@@ -138,7 +138,6 @@
         var fen = GlobalFen;
         var roomOwnerSide = '{{ room.room_owner_side.value }}';
         var isTurn = isPlayerTurn(fen, roomOwnerSide);
-        console.log('GlobalStatus = ', GlobalStatus);
         if (isTurn && GlobalStatus == 2) {
             // what moves are available to from this square?
             const legalMoves = game.moves({
@@ -170,7 +169,6 @@
         // Extract the current turn from the FEN string
         var turn = fen.split(' ')[1];;
         // Compare the player's side with the current turn
-        console.log('Playerside', playerSide == turn);
         return (turn === playerSide && '{{ user.username }}' == '{{ room.room_owner.username }}') || (turn !== playerSide && '{{ user.username }}' == '{{ room.room_opponent.username }}');
     }
 
@@ -226,7 +224,6 @@
     // socket on room_update event
     socket.on('room_updated_', function (data) {
         data = jQuery.parseJSON(data);
-        console.log('Room update event received');
         console.log(data);
         GlobalStatus = data.game_status;
 
@@ -366,7 +363,7 @@
         var promotedPiece = $(this).data('piece');
 
         data_to_send.move.promotedPiece = promotedPiece;
-        $('#promotionModal').modal('hide');
+        $('#promotionModal').modal('hide'); 
 
         socket.emit('piece_move', data_to_send,
             (response) => {
