@@ -502,7 +502,11 @@ def piece_move_notify(data):
     room = game_rooms.get(room_id)
     if room:
         if room.room_owner.username == user.username or (room.room_opponent != None and room.room_opponent.username == user.username) :
-            emit('piece_moved_', move, room=room_id, skip_sid=request.sid)
+            # return_move # format: { "source": "c7", "target": "c5", "piece": "bP" , "promotedPiece" : None}
+            return_move = {'source': None, 'target': None, 'piece': None, 'promotedPiece': None}
+            return_data = {'move': return_move, 'fen': move['fen'] + ' b - - 0 1'}
+            print("Move notify:", return_data)
+            emit('piece_moved_', return_data, room=room_id, skip_sid=request.sid)
             return {'status': 'success', 'message': f'Piece moved successfully'}
         else:
             return {'status': 'error', 'message': f"You are not playing in this room {room_id}"}
